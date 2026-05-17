@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -40,6 +41,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--log-level", default=os.environ.get("LOG_LEVEL", "INFO"))
     parser.add_argument("--prometheus-port", type=int, default=8000)
+    parser.add_argument("--status-interval", type=int, default=300,
+                        help="Seconds between equity/position status log lines (default: 300)")
     return parser.parse_args()
 
 
@@ -75,6 +78,7 @@ async def run_paper_or_live(args: argparse.Namespace) -> None:
         strategies=strategies,
         execution_mode=mode,
         prometheus_port=args.prometheus_port,
+        status_interval_seconds=args.status_interval,
     )
 
     await engine.run()
@@ -86,11 +90,26 @@ def main() -> None:
     configure_logging(log_level=args.log_level)
 
     if args.mode == "backtest":
-        # Backtesting is launched via scripts/run_backtest.py
         print("For backtesting, use: python scripts/run_backtest.py --help")
         sys.exit(0)
 
-    asyncio.run(run_paper_or_live(args))
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    main_task: asyncio.Task = loop.create_task(run_paper_or_live(args))
+
+    def _request_stop(signum, frame):  # noqa: ARG001
+        print(f"\nShutdown signal {signum} received — stopping gracefully...")
+        main_task.cancel()
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, lambda s=sig, f=None: _request_stop(s, f))
+
+    try:
+        loop.run_until_complete(main_task)
+    except asyncio.CancelledError:
+        pass
+    finally:
+        loop.close()
 
 
 if __name__ == "__main__":

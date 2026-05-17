@@ -134,6 +134,44 @@ class PaperBroker(AbstractBroker):
     async def get_account_balance(self) -> dict[str, float]:
         return {"cash": self._cash}
 
+    async def simulate_stop_fill(
+        self,
+        symbol: str,
+        side: str,
+        qty: float,
+        fill_price: float,
+        strategy_id: str,
+        idempotency_key: str,
+        timestamp: "datetime",
+    ) -> Optional[FillEvent]:
+        """Immediately simulate a stop/TP fill without waiting for the next bar."""
+        fee_rate = self._cfg.fee_schedule.taker
+        fee_paid = qty * fill_price * fee_rate
+
+        if side == "buy":
+            cost = qty * fill_price + fee_paid
+            if cost > self._cash:
+                return None
+            self._cash -= cost
+        else:
+            self._cash += qty * fill_price - fee_paid
+
+        fill = FillEvent(
+            order_id=str(uuid.uuid4())[:8],
+            symbol=symbol,
+            side=side,
+            qty_filled=qty,
+            avg_price=fill_price,
+            fee_paid=fee_paid,
+            timestamp=timestamp,
+            strategy_id=strategy_id,
+            idempotency_key=idempotency_key,
+            is_partial=False,
+        )
+        for cb in self._fill_callbacks:
+            await cb(fill)
+        return fill
+
     async def sync_positions(self) -> list[dict]:
         return []
 

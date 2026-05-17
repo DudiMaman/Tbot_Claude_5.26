@@ -16,6 +16,7 @@ from bot.core.clock import Clock, WallClock
 from bot.core.config import BrokerConfig, RiskConfig
 from bot.core.events import FillEvent, MarketEvent, OHLCVBar, OrderEvent, RejectionEvent, Signal
 from bot.core.modes import ExecutionMode, RiskMode
+from bot.data.base import AbstractDataFeed
 from bot.data.feed_crypto import CryptoFeed
 from bot.data.timeframe_manager import TimeframeManager
 from bot.execution.base import AbstractBroker
@@ -44,6 +45,8 @@ class TradingEngine:
         clock: Optional[Clock] = None,
         enable_prometheus: bool = True,
         prometheus_port: int = 8000,
+        status_interval_seconds: int = 300,
+        data_feed: Optional[AbstractDataFeed] = None,
     ) -> None:
         self._rcfg = risk_config
         self._bcfg = broker_config
@@ -73,6 +76,9 @@ class TradingEngine:
         self._pending_signals: dict[str, tuple[Signal, float]] = {}  # idempotency_key → (signal, qty)
         self._running = False
         self._stale_check_interval = risk_config.stale_order_timeout_minutes * 60
+        self._status_interval = status_interval_seconds
+        self._data_feed: Optional[AbstractDataFeed] = data_feed
+        self._background_tasks: list[asyncio.Task] = []
 
         if isinstance(broker, PaperBroker):
             broker.register_fill_callback(self._on_fill)
@@ -98,8 +104,11 @@ class TradingEngine:
         # Sync positions on startup (handles container restart mid-trade)
         await self._sync_positions_on_startup()
 
-        asyncio.create_task(self._stale_order_monitor())
-        asyncio.create_task(self._daily_reset_loop())
+        self._background_tasks = [
+            asyncio.create_task(self._stale_order_monitor()),
+            asyncio.create_task(self._daily_reset_loop()),
+            asyncio.create_task(self._status_reporter()),
+        ]
 
         logger.info(
             "engine_started",
@@ -118,11 +127,20 @@ class TradingEngine:
         except asyncio.CancelledError:
             pass
         finally:
+            for task in self._background_tasks:
+                task.cancel()
+            if self._background_tasks:
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
+            self._background_tasks.clear()
             await self._broker.stop()
             logger.info("engine_stopped")
 
     async def _consume_feed(self, symbol: str, timeframe: str) -> None:
-        feed = CryptoFeed(testnet=os.environ.get("BINANCE_TESTNET", "true").lower() == "true")
+        if self._data_feed is not None:
+            feed = self._data_feed
+        else:
+            testnet = os.environ.get("BINANCE_TESTNET", "true").lower() == "true"
+            feed = CryptoFeed(testnet=testnet)
         async for bar in feed.stream_bars(symbol, timeframe):
             await self._on_bar(bar)
 
@@ -135,10 +153,12 @@ class TradingEngine:
         self._tf_manager.update(bar)
         self._equity_curve.record(self._clock.now(), self._portfolio.equity())
 
-        # Update trailing stops
+        # Update trailing stops then check if stop/TP was hit this bar
         self._portfolio.update_on_bar(bar)
+        if isinstance(self._broker, PaperBroker):
+            await self._check_paper_stops(bar)
 
-        # Process pending fills from paper broker
+        # Process other pending orders from paper broker
         if isinstance(self._broker, PaperBroker):
             await self._broker.on_bar(bar)
 
@@ -302,6 +322,71 @@ class TradingEngine:
                 logger.info("emergency_close_sent", symbol=sym)
             except Exception as e:
                 logger.error("emergency_close_failed", symbol=sym, error=str(e))
+
+    async def _check_paper_stops(self, bar: OHLCVBar) -> None:
+        """Auto-close paper positions when bar crosses stop-loss or take-profit."""
+        pos = self._portfolio.open_positions.get(bar.symbol)
+        if pos is None:
+            return
+
+        close_side = "sell" if pos.side == "long" else "buy"
+        fill_price: Optional[float] = None
+        reason: Optional[str] = None
+
+        if pos.side == "long":
+            if pos.take_profit and bar.high >= pos.take_profit:
+                fill_price, reason = pos.take_profit, "take_profit"
+            elif bar.low <= pos.stop_loss:
+                fill_price, reason = pos.stop_loss, "stop_loss"
+        else:
+            if pos.take_profit and bar.low <= pos.take_profit:
+                fill_price, reason = pos.take_profit, "take_profit"
+            elif bar.high >= pos.stop_loss:
+                fill_price, reason = pos.stop_loss, "stop_loss"
+
+        if fill_price is None:
+            return
+
+        idem_key = f"auto_{reason}_{bar.symbol}_{bar.timestamp.timestamp():.0f}"
+        logger.info(
+            "paper_auto_close",
+            symbol=bar.symbol,
+            reason=reason,
+            fill_price=round(fill_price, 4),
+        )
+        await self._broker.simulate_stop_fill(
+            symbol=bar.symbol,
+            side=close_side,
+            qty=pos.qty_filled,
+            fill_price=fill_price,
+            strategy_id=pos.strategy_id,
+            idempotency_key=idem_key,
+            timestamp=bar.timestamp,
+        )
+
+    async def _status_reporter(self) -> None:
+        """Emit a periodic equity / position snapshot to the log."""
+        while self._running:
+            await asyncio.sleep(self._status_interval)
+            equity = self._portfolio.equity()
+            pnl = self._portfolio.daily_net_pnl()
+            positions = {
+                sym: {
+                    "side": p.side,
+                    "entry": round(p.entry_price, 4),
+                    "qty": p.qty_filled,
+                    "sl": round(p.stop_loss, 4),
+                    "tp": round(p.take_profit, 4),
+                }
+                for sym, p in self._portfolio.open_positions.items()
+            }
+            logger.info(
+                "status_snapshot",
+                equity_usd=round(equity, 2),
+                daily_pnl_usd=round(pnl, 2),
+                open_positions=len(positions),
+                positions=positions,
+            )
 
     def stop(self) -> None:
         self._running = False
