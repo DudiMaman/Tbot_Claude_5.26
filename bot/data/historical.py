@@ -62,7 +62,7 @@ class HistoricalLoader:
         except ImportError:
             raise ImportError("ccxt is required for crypto historical data: pip install ccxt")
 
-        exchange = ccxt.binance({"enableRateLimit": True})
+        exchange = ccxt.binance({"enableRateLimit": True, "verify": False})
         if self._testnet:
             exchange.set_sandbox_mode(True)
 

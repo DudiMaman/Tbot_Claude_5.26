@@ -44,6 +44,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="reports")
     parser.add_argument("--config-dir", default="config")
     parser.add_argument("--market", default="crypto", choices=["crypto", "stocks"])
+    parser.add_argument("--data-file", default=None,
+                        help="Path to a pre-generated parquet file (skips network fetch)")
     return parser.parse_args()
 
 
@@ -69,13 +71,19 @@ async def main() -> None:
     strategy_cls = _STRATEGY_MAP[args.strategy]
     strategy = strategy_cls(strategy_cfg)
 
-    loader = HistoricalLoader()
-    print(f"Fetching {args.symbol} {args.timeframe} data {start} → {end}...")
-
-    if args.market == "crypto":
-        df = await loader.fetch_crypto(args.symbol, args.timeframe, start, end)
+    if args.data_file:
+        import pandas as pd
+        print(f"Loading data from {args.data_file}...")
+        df = pd.read_parquet(args.data_file)
+        if df.index.tz is None:
+            df.index = df.index.tz_localize("UTC")
     else:
-        df = await loader.fetch_stocks(args.symbol, args.timeframe, start, end)
+        loader = HistoricalLoader()
+        print(f"Fetching {args.symbol} {args.timeframe} data {start} → {end}...")
+        if args.market == "crypto":
+            df = await loader.fetch_crypto(args.symbol, args.timeframe, start, end)
+        else:
+            df = await loader.fetch_stocks(args.symbol, args.timeframe, start, end)
 
     if df.empty:
         print("No data fetched. Check symbol/timeframe/dates.")
@@ -83,18 +91,28 @@ async def main() -> None:
 
     print(f"Loaded {len(df)} bars. Running backtest...")
 
-    # Also fetch daily data for trend filter if available
+    # Also fetch/derive daily data for trend filter
     bars_by_tf = {args.timeframe: df}
     if args.timeframe != "1D":
-        try:
-            if args.market == "crypto":
-                daily_df = await loader.fetch_crypto(args.symbol, "1D", start, end)
-            else:
-                daily_df = await loader.fetch_stocks(args.symbol, "1D", start, end)
+        if args.data_file:
+            # Resample intraday data to daily for the trend filter
+            import pandas as pd
+            daily_df = df.resample("1D").agg(
+                {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+            ).dropna()
             if not daily_df.empty:
                 bars_by_tf["1D"] = daily_df
-        except Exception:
-            pass
+        else:
+            try:
+                loader2 = HistoricalLoader()
+                if args.market == "crypto":
+                    daily_df = await loader2.fetch_crypto(args.symbol, "1D", start, end)
+                else:
+                    daily_df = await loader2.fetch_stocks(args.symbol, "1D", start, end)
+                if not daily_df.empty:
+                    bars_by_tf["1D"] = daily_df
+            except Exception:
+                pass
 
     engine = BacktestEngine(
         risk_config=risk_cfg,

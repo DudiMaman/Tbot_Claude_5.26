@@ -1,0 +1,15 @@
+{
+  "total_trades": 33,
+  "win_rate": 0.2727,
+  "profit_factor": 0.875,
+  "max_drawdown_pct": 57.23,
+  "sharpe_ratio": 0.1431,
+  "sortino_ratio": 0.0108,
+  "avg_net_pnl_per_trade": -2.7798,
+  "total_fees_paid": 97.9663,
+  "net_return_pct": -1.8347,
+  "max_consecutive_losses": 6,
+  "avg_trade_duration_hours": 8.85,
+  "avg_win": 71.3571,
+  "avg_loss": 30.5811
+}

@@ -8,6 +8,7 @@ build/
 .ruff_cache/
 .pytest_cache/
 *.parquet
+data/synthetic/
 data_cache/
 logs/
 KILL_SWITCH
