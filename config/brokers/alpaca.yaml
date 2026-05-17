@@ -1,0 +1,26 @@
+name: alpaca
+asset_class: stocks
+
+base_url: https://paper-api.alpaca.markets
+live_url: https://api.alpaca.markets
+data_url: https://data.alpaca.markets
+
+fee_schedule:
+  commission_per_trade: 0.0    # Alpaca is commission-free
+  sec_fee_per_dollar: 0.0000278  # SEC fee on sells
+
+slippage_estimate_bps: 3       # 0.03% per side for liquid stocks
+
+# Market hours (US Eastern time)
+market_open: "09:30"
+market_close: "16:00"
+timezone: America/New_York
+
+# PDT rule enforcement
+enforce_pdt_rules: true
+pdt_day_trade_limit: 3         # 3 day trades per rolling 5 business days
+
+default_symbols:
+  - SPY
+  - QQQ
+  - AAPL

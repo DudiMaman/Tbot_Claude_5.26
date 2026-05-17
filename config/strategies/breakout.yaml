@@ -1,0 +1,20 @@
+strategy_id: breakout
+strategy_class: bot.strategies.breakout.BreakoutStrategy
+
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+
+timeframes:
+  signal: "4h"
+  trend: "1D"
+
+# Indicator params
+lookback_bars: 20           # N-bar high/low for S/R levels
+confirmation_bars: 2        # closes above level needed to confirm breakout
+volume_surge_multiplier: 1.5  # volume must be 1.5x average
+
+take_profit_r: 2.5
+trailing_stop_pct: 0.02
+
+warmup_bars: 25

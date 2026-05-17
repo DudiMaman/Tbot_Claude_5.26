@@ -1,0 +1,24 @@
+strategy_id: ema_crossover
+strategy_class: bot.strategies.ema_crossover.EMACrossoverStrategy
+
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+
+timeframes:
+  signal: "1h"       # trend + signal generation
+  entry: "15m"       # entry timing
+  trend: "1D"        # higher timeframe trend filter
+
+# Indicator params
+ema_fast: 9
+ema_slow: 21
+adx_period: 14
+adx_threshold: 25.0  # only trade when ADX > 25 (trending market)
+
+# Trade params
+take_profit_r: 2.0   # TP at 2R
+trailing_stop_pct: 0.015   # 1.5% trailing stop once in profit
+
+# Warm-up bars required before generating signals
+warmup_bars: 50

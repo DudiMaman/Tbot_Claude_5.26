@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    env_file: ../.env
+    volumes:
+      - ../data_cache:/app/data_cache
+      - ../logs:/app/logs
+      - ../reports:/app/reports
+      # Kill switch file mount for emergency halt
+      - ../KILL_SWITCH:/app/KILL_SWITCH
+    ports:
+      - "8000:8000"   # Prometheus metrics
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"

@@ -1,0 +1,23 @@
+name: binance
+asset_class: crypto
+
+rest_url: https://api.binance.com
+testnet_rest_url: https://testnet.binance.vision
+ws_url: wss://stream.binance.com:9443
+testnet_ws_url: wss://testnet.binance.vision
+
+fee_schedule:
+  maker: 0.001     # 0.1%
+  taker: 0.001     # 0.1% (0.2% round-trip)
+
+slippage_estimate_bps: 5       # 0.05% per side
+min_notional_usd: 10.0
+
+# Rate limiting
+rest_weight_limit_per_minute: 1200
+rest_weight_backoff_threshold: 0.80   # back off at 80% of limit
+
+# Symbols to trade (overridden per strategy config)
+default_symbols:
+  - BTCUSDT
+  - ETHUSDT

@@ -1,0 +1,18 @@
+capital_usd: 5000.0
+risk_per_trade_pct: 0.01       # 1% max risk per trade
+max_daily_loss_pct: 0.03       # 3% daily drawdown circuit breaker
+max_open_positions: 5
+min_r_after_fees: 1.5          # minimum R:R after all fees/slippage
+risk_mode: normal              # defensive | normal | aggressive
+execution_mode: paper          # backtest | paper | live
+
+# Consecutive-loss streak thresholds
+losing_streak_defensive: 3    # switch to DEFENSIVE after this many consecutive losses
+losing_streak_halt: 6         # halt new entries after this many consecutive losses
+
+# Crypto/stock exposure caps (portfolio level)
+max_crypto_exposure_pct: 0.60
+max_stock_exposure_pct: 0.40
+
+# Stale order timeout
+stale_order_timeout_minutes: 30
