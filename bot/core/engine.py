@@ -28,6 +28,7 @@ from bot.reporting.equity_curve import EquityCurve
 from bot.reporting.prometheus import TradingMetrics
 from bot.risk.circuit_breaker import KillSwitch
 from bot.risk.manager import RiskManager
+from bot.brain.engine import BrainEngine
 from bot.strategies.base import BaseStrategy, StrategyContext
 from bot.utils.idempotency import make_key
 
@@ -47,6 +48,9 @@ class TradingEngine:
         prometheus_port: int = 8000,
         status_interval_seconds: int = 300,
         data_feed: Optional[AbstractDataFeed] = None,
+        enable_brain: bool = True,
+        brain_interval_bars: int = 50,
+        brain_state_path: str = "reports/brain_state.json",
     ) -> None:
         self._rcfg = risk_config
         self._bcfg = broker_config
@@ -85,6 +89,20 @@ class TradingEngine:
 
         for strategy in self._strategies:
             strategy.initialize(self._portfolio)
+
+        self._brain: Optional[BrainEngine] = (
+            BrainEngine(
+                strategies=strategies,
+                portfolio=self._portfolio,
+                risk_manager=self._risk_mgr,
+                assessment_interval_bars=brain_interval_bars,
+                state_path=Path(brain_state_path),
+            )
+            if enable_brain
+            else None
+        )
+        # Accumulate bars for the Brain's regime detector
+        self._brain_price_bars: list[float] = []
 
         if enable_prometheus:
             try:
@@ -168,12 +186,21 @@ class TradingEngine:
             self._metrics.equity.labels(mode=self._mode.value).set(equity)
             self._metrics.daily_pnl.set(self._portfolio.daily_net_pnl())
 
+        # Feed the Brain a price DataFrame for regime detection + assessment
+        if self._brain is not None:
+            price_df = self._tf_manager.get_dataframe(bar.symbol, bar.timeframe)
+            self._brain.on_bar(price_df)
+
         # Dispatch to all strategies
         for strategy in self._strategies:
             if bar.symbol not in strategy.config.symbols:
                 continue
             signal_tf = strategy.config.timeframes.get("signal", "1h")
             if bar.timeframe != signal_tf:
+                continue
+
+            # Brain may have disabled this strategy
+            if self._brain is not None and not self._brain.is_strategy_enabled(strategy.strategy_id):
                 continue
 
             bars_dict: dict[str, "pd.DataFrame"] = {}
@@ -383,12 +410,17 @@ class TradingEngine:
                 }
                 for sym, p in self._portfolio.open_positions.items()
             }
+            brain_info = self._brain.get_summary() if self._brain is not None else {}
             logger.info(
                 "status_snapshot",
                 equity_usd=round(equity, 2),
                 daily_pnl_usd=round(pnl, 2),
                 open_positions=len(positions),
                 positions=positions,
+                brain_regime=brain_info.get("regime", "n/a"),
+                brain_enabled=brain_info.get("enabled_strategies", {}),
+                brain_risk_modes=brain_info.get("risk_modes", {}),
+                brain_decisions=brain_info.get("decisions", {}).get("total_decisions", 0),
             )
 
     def stop(self) -> None:

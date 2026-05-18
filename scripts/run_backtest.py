@@ -46,6 +46,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--market", default="crypto", choices=["crypto", "stocks"])
     parser.add_argument("--data-file", default=None,
                         help="Path to a pre-generated parquet file (skips network fetch)")
+    parser.add_argument("--no-brain", action="store_true",
+                        help="Disable the Brain meta-controller")
+    parser.add_argument("--brain-interval", type=int, default=50,
+                        help="Bars between Brain assessment cycles (default: 50)")
     return parser.parse_args()
 
 
@@ -140,6 +144,8 @@ async def main() -> None:
         broker_config=broker_cfg,
         strategies=[strategy],
         output_dir=args.output_dir,
+        enable_brain=not args.no_brain,
+        brain_interval_bars=args.brain_interval,
     )
 
     metrics = await engine.run(bars_by_tf, primary_tf=args.timeframe)
@@ -149,6 +155,14 @@ async def main() -> None:
     print("=" * 60)
     for k, v in metrics.items():
         print(f"  {k:<35} {v}")
+
+    if engine._brain is not None:
+        summary = engine._brain.get_summary()
+        print()
+        print(f"Brain: regime={summary['regime']}  decisions={summary['decisions']['total_decisions']}")
+        if summary["decisions"]["action_counts"]:
+            print("  Actions:", dict(summary["decisions"]["action_counts"]))
+
     print(f"\nReports saved to: {args.output_dir}/")
 
 

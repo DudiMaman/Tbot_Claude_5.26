@@ -44,9 +44,10 @@ STRATEGY_MAP = {
 
 _BANNER = """
 ╔══════════════════════════════════════════════════════════════╗
-║   PHASE 3 — BINANCE TESTNET PAPER TRADING                   ║
-║   Market data : wss://testnet.binance.vision/ws             ║
+║   PHASE 3 — BINANCE TESTNET PAPER TRADING  (+  THE BRAIN)   ║
+║   Market data : Synthetic live feed (GBM)                   ║
 ║   Execution   : PaperBroker (simulated fills, no real $$)   ║
+║   Brain       : Regime detection + per-strategy adaptation  ║
 ║   Press Ctrl+C to stop and print final stats                ║
 ╚══════════════════════════════════════════════════════════════╝
 """
@@ -85,10 +86,18 @@ def parse_args() -> argparse.Namespace:
         help="Real seconds per synthetic bar (default: 5). "
              "Lower = faster paper trading. 3600 = real-time 1h bars.",
     )
+    p.add_argument(
+        "--no-brain", action="store_true",
+        help="Disable the Brain meta-controller (run strategies without adaptation)",
+    )
+    p.add_argument(
+        "--brain-interval", type=int, default=50,
+        help="Number of bars between Brain assessment cycles (default: 50)",
+    )
     return p.parse_args()
 
 
-def _print_final_stats(portfolio, start_time: datetime) -> None:
+def _print_final_stats(portfolio, start_time: datetime, brain=None) -> None:
     elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
     equity = portfolio.equity()
     pnl = portfolio.daily_net_pnl()
@@ -104,6 +113,25 @@ def _print_final_stats(portfolio, start_time: datetime) -> None:
     if n_closed > 0:
         print(f"  Win rate       : {win_rate:.1%}")
     print(f"  Open positions : {portfolio.open_position_count()}")
+    if brain is not None:
+        summary = brain.get_summary()
+        print()
+        print("BRAIN SUMMARY")
+        print(f"  Market regime  : {summary['regime']}")
+        print(f"  Decisions made : {summary['decisions']['total_decisions']}")
+        if summary["decisions"]["action_counts"]:
+            for action, count in summary["decisions"]["action_counts"].items():
+                print(f"    {action:<28} {count}")
+        if summary["metrics"]:
+            print()
+            print("  Strategy performance (rolling window):")
+            for sid, m in summary["metrics"].items():
+                status = "ON " if summary["enabled_strategies"].get(sid) else "OFF"
+                mode = summary["risk_modes"].get(sid, "normal")
+                print(f"    [{status}] [{mode:>9}] {sid}: "
+                      f"WR={m['win_rate']:.0%}  PF={m['profit_factor']:.2f}  "
+                      f"Sharpe={m['rolling_sharpe']:+.2f}  "
+                      f"NetPnL=${m['total_net_pnl']:+.2f}")
     print("=" * 60)
 
 
@@ -136,6 +164,8 @@ async def run(args: argparse.Namespace) -> None:
         prometheus_port=args.prometheus_port,
         status_interval_seconds=args.status_interval,
         data_feed=feed,
+        enable_brain=not args.no_brain,
+        brain_interval_bars=args.brain_interval,
     )
 
     start_time = datetime.now(timezone.utc)
@@ -145,6 +175,7 @@ async def run(args: argparse.Namespace) -> None:
     print(f"  Strategies     : {', '.join(args.strategies)}")
     print(f"  Bar speed      : {args.bar_seconds}s / bar (synthetic live feed)")
     print(f"  Status every   : {args.status_interval}s")
+    print(f"  Brain          : {'ENABLED (interval=' + str(args.brain_interval) + ' bars)' if not args.no_brain else 'DISABLED'}")
     print()
 
     try:
@@ -152,7 +183,7 @@ async def run(args: argparse.Namespace) -> None:
     except asyncio.CancelledError:
         pass
     finally:
-        _print_final_stats(engine._portfolio, start_time)
+        _print_final_stats(engine._portfolio, start_time, brain=engine._brain)
 
 
 def main() -> None:

@@ -24,6 +24,7 @@ from bot.execution.paper import PaperBroker
 from bot.portfolio.manager import PortfolioManager
 from bot.reporting.equity_curve import EquityCurve, compute_metrics, save_summary, save_trade_log
 from bot.risk.manager import RiskManager
+from bot.brain.engine import BrainEngine
 from bot.strategies.base import BaseStrategy, StrategyContext
 from bot.utils.idempotency import make_key
 
@@ -37,6 +38,8 @@ class BacktestEngine:
         broker_config: BrokerConfig,
         strategies: list[BaseStrategy],
         output_dir: str = "reports",
+        enable_brain: bool = True,
+        brain_interval_bars: int = 50,
     ) -> None:
         self._rcfg = risk_config
         self._bcfg = broker_config
@@ -59,6 +62,18 @@ class BacktestEngine:
 
         for strategy in self._strategies:
             strategy.initialize(self._portfolio)
+
+        self._brain: Optional[BrainEngine] = (
+            BrainEngine(
+                strategies=strategies,
+                portfolio=self._portfolio,
+                risk_manager=self._risk_mgr,
+                assessment_interval_bars=brain_interval_bars,
+                state_path=self._output_dir / "brain_state.json",
+            )
+            if enable_brain
+            else None
+        )
 
     async def run(
         self,
@@ -98,8 +113,16 @@ class BacktestEngine:
                         for fill in fills:
                             await self._process_fill(fill, sym)
 
+            # Let the Brain assess and adapt before dispatching strategies
+            primary_slice = bars_by_tf[primary_tf].iloc[: i + 1]
+            if self._brain is not None:
+                self._brain.on_bar(primary_slice)
+
             # Build context for each symbol and strategy
             for strategy in self._strategies:
+                # Brain may have disabled this strategy
+                if self._brain is not None and not self._brain.is_strategy_enabled(strategy.strategy_id):
+                    continue
                 for sym in strategy.config.symbols:
                     curr_bar = _row_to_bar(ts_dt, row, sym, primary_tf)
                     tf_mgr.update(curr_bar)
@@ -220,6 +243,16 @@ class BacktestEngine:
         save_summary(metrics, self._output_dir / "summary.json")
 
         logger.info("backtest_complete", **{k: v for k, v in metrics.items() if isinstance(v, (int, float, str))})
+
+        if self._brain is not None:
+            brain_summary = self._brain.get_summary()
+            save_summary(brain_summary, self._output_dir / "brain_summary.json")
+            logger.info("brain_session_summary", **{
+                "regime": brain_summary["regime"],
+                "total_decisions": brain_summary["decisions"]["total_decisions"],
+                "action_counts": brain_summary["decisions"]["action_counts"],
+            })
+
         return metrics
 
 

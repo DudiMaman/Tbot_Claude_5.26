@@ -1,0 +1,58 @@
+{
+  "decisions": [
+    {
+      "timestamp": "2026-05-18T07:14:47.475995+00:00",
+      "strategy_id": "ema_crossover",
+      "action": "set_risk_mode",
+      "reason": "defensive: sharpe=-0.51, regime_mismatch (ranging)",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "ranging",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.2,
+        "profit_factor": 0.294,
+        "avg_net_pnl": -22.08,
+        "rolling_sharpe": -0.508,
+        "rolling_net_pnl": -110.39,
+        "consecutive_losses": 2,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": -110.39,
+        "total_fees": 22.02
+      }
+    },
+    {
+      "timestamp": "2026-05-18T07:17:30.527185+00:00",
+      "strategy_id": "ema_crossover",
+      "action": "set_risk_mode",
+      "reason": "defensive: sharpe=-0.52, regime_mismatch (ranging)",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "ranging",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.2,
+        "profit_factor": 0.288,
+        "avg_net_pnl": -22.65,
+        "rolling_sharpe": -0.525,
+        "rolling_net_pnl": -113.27,
+        "consecutive_losses": 2,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": -113.27,
+        "total_fees": 22.02
+      }
+    }
+  ]
+}

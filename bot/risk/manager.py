@@ -34,6 +34,8 @@ class RiskManager:
         self._daily_breaker = DailyLossBreaker(risk_config)
         self._streak_guard = LosingStreakGuard(risk_config)
         self._risk_mode = RiskMode(risk_config.risk_mode)
+        # Per-strategy overrides set by BrainEngine; fall back to global mode if absent
+        self._strategy_risk_modes: dict[str, RiskMode] = {}
 
     # ------------------------------------------------------------------
     # Main validation entry point
@@ -74,9 +76,10 @@ class RiskManager:
         if signal.direction in ("close", "flat"):
             return 0.0, None  # close signals bypass further checks
 
-        # 5. Compute quantity
+        # 5. Compute quantity — use per-strategy override if Brain has set one
+        effective_mode = self._strategy_risk_modes.get(signal.strategy_id, self._risk_mode)
         qty, sizing_err = self._sizer.compute_qty(
-            signal, capital, self._risk_mode, step_size
+            signal, capital, effective_mode, step_size
         )
         if sizing_err:
             return self._reject(signal, sizing_err, now)
@@ -148,6 +151,19 @@ class RiskManager:
 
     def reset_streak(self) -> None:
         self._streak_guard.reset()
+
+    # ------------------------------------------------------------------
+    # Brain interface — per-strategy risk mode overrides
+    # ------------------------------------------------------------------
+
+    def set_risk_mode(self, strategy_id: str, mode: RiskMode) -> None:
+        self._strategy_risk_modes[strategy_id] = mode
+
+    def get_risk_mode(self, strategy_id: str) -> RiskMode:
+        return self._strategy_risk_modes.get(strategy_id, self._risk_mode)
+
+    def strategy_risk_modes(self) -> dict[str, str]:
+        return {sid: mode.value for sid, mode in self._strategy_risk_modes.items()}
 
     @property
     def risk_mode(self) -> RiskMode:
