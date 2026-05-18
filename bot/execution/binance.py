@@ -45,6 +45,7 @@ class BinanceBroker(AbstractBroker):
         self._fill_callbacks: list = []
         self._weight_used: int = 0
         self._weight_reset_ts: float = time.time()
+        self._weight_backoff_until: float = 0.0  # epoch seconds; sleep until this before next request
         self._listen_key: Optional[str] = None
         self._exchange_info: dict[str, Any] = {}
         self._ws_task: Optional[asyncio.Task] = None
@@ -53,6 +54,10 @@ class BinanceBroker(AbstractBroker):
         self._fill_callbacks.append(cb)
 
     async def start(self) -> None:
+        if not self._api_key or not self._secret:
+            raise RuntimeError(
+                "BINANCE_API_KEY and BINANCE_SECRET must be set before starting BinanceBroker"
+            )
         await self._load_exchange_info()
         self._listen_key = await self._create_listen_key()
         if self._listen_key:
@@ -72,6 +77,12 @@ class BinanceBroker(AbstractBroker):
         symbol_info = self._exchange_info.get(order_event.symbol, {})
         qty = self._round_qty(order_event.qty, symbol_info)
         notional = qty * order_event.price if order_event.price > 0 else 0
+
+        min_notional = symbol_info.get("minNotional", 10.0)
+        if order_event.price > 0 and qty * order_event.price < min_notional:
+            raise ValueError(
+                f"Order notional {qty * order_event.price:.4f} < min notional {min_notional} for {order_event.symbol}"
+            )
 
         params: dict[str, Any] = {
             "symbol": order_event.symbol,
@@ -179,7 +190,8 @@ class BinanceBroker(AbstractBroker):
         order_id = str(event.get("i", ""))
         status = _map_binance_status(event.get("X", ""))
         qty_filled = float(event.get("z", 0))
-        avg_price = float(event.get("ap", 0)) or float(event.get("p", 0))
+        # "ap" = averagePrice (post-fill), "L" = lastExecutedPrice, "p" = orderPrice (pre-fill)
+        avg_price = float(event.get("ap", 0)) or float(event.get("L", 0)) or float(event.get("p", 0))
         fee = float(event.get("n", 0))
         symbol = event.get("s", "")
         side = "buy" if event.get("S", "") == "BUY" else "sell"
@@ -210,6 +222,11 @@ class BinanceBroker(AbstractBroker):
     async def _signed_request(
         self, method: str, endpoint: str, params: dict[str, Any]
     ) -> Any:
+        wait = self._weight_backoff_until - time.time()
+        if wait > 0:
+            logger.info("rate_limit_backoff", sleep_seconds=round(wait, 1))
+            await asyncio.sleep(wait)
+
         params["timestamp"] = int(time.time() * 1000)
         query = urlencode(params)
         sig = hmac.new(self._secret.encode(), query.encode(), hashlib.sha256).hexdigest()
@@ -241,7 +258,10 @@ class BinanceBroker(AbstractBroker):
             limit = self._cfg.rest_weight_limit_per_minute
             threshold = self._cfg.rest_weight_backoff_threshold
             if self._weight_used > limit * threshold:
-                logger.warning("rate_limit_approaching", weight_used=self._weight_used, limit=limit)
+                # Pause new requests until next minute window resets
+                self._weight_backoff_until = time.time() + 60.0
+                logger.warning("rate_limit_approaching", weight_used=self._weight_used,
+                               limit=limit, backoff_seconds=60)
         except ValueError:
             pass
 

@@ -34,17 +34,20 @@ from bot.reporting.logger import configure_logging
 from bot.strategies.ema_crossover import EMACrossoverStrategy
 from bot.strategies.mean_reversion import MeanReversionStrategy
 from bot.strategies.breakout import BreakoutStrategy
+from bot.strategies.momentum_sniper import MomentumSniperStrategy
 
 _STRATEGY_MAP = {
     "ema_crossover": EMACrossoverStrategy,
     "mean_reversion": MeanReversionStrategy,
     "breakout": BreakoutStrategy,
+    "momentum_sniper": MomentumSniperStrategy,
 }
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Walk-forward strategy validation")
     p.add_argument("--strategy", required=True, choices=list(_STRATEGY_MAP))
+    p.add_argument("--no-brain", action="store_true", help="Disable Brain adaptive engine")
     p.add_argument("--symbol", default="BTCUSDT")
     p.add_argument("--timeframe", default="1h")
     p.add_argument("--data-file", required=True, help="Path to .parquet historical data file")
@@ -75,18 +78,42 @@ def _load_data(path: str, timeframe: str) -> pd.DataFrame:
     return df
 
 
+def _build_bars_by_tf(primary_df: pd.DataFrame, primary_tf: str, strategy_cfg) -> dict:
+    """Build {tf: DataFrame} dict for all TFs required by the strategy."""
+    _RESAMPLE = {"1h": "1h", "4h": "4h", "1D": "1D", "1d": "1D"}
+
+    bars: dict[str, pd.DataFrame] = {primary_tf: primary_df}
+    required_tfs = set(strategy_cfg.timeframes.values()) - {primary_tf}
+
+    for tf in required_tfs:
+        rule = _RESAMPLE.get(tf)
+        if rule and tf not in bars:
+            if tf in ("1h", "1H") and primary_tf in ("15m", "5m", "1m"):
+                bars[tf] = primary_df.resample("1h").agg(
+                    {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+                ).dropna()
+            elif rule:
+                bars[tf] = primary_df.resample(rule).agg(
+                    {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+                ).dropna()
+    return bars
+
+
 async def main() -> None:
     load_dotenv()
     args = parse_args()
     configure_logging(log_level="WARNING")
 
-    df = _load_data(args.data_file, args.timeframe)
-    print(f"Loaded {len(df)} bars ({args.timeframe})")
-
     broker_name = "binance" if args.market == "crypto" else "alpaca"
     risk_cfg = load_risk_config(args.config_dir)
     broker_cfg = load_broker_config(broker_name, args.config_dir)
     base_cfg = load_strategy_config(args.strategy, args.config_dir)
+
+    df = _load_data(args.data_file, args.timeframe)
+    print(f"Loaded {len(df)} bars ({args.timeframe})")
+    bars_by_tf = _build_bars_by_tf(df, args.timeframe, base_cfg)
+    tfs_loaded = {tf: len(d) for tf, d in bars_by_tf.items()}
+    print(f"Timeframes: {tfs_loaded}")
 
     # Override symbol
     cfg_data = base_cfg.model_dump()
@@ -110,12 +137,13 @@ async def main() -> None:
         train_periods=args.train_periods,
         test_periods=args.test_periods,
         output_dir=str(out_dir),
+        enable_brain=not args.no_brain,
     )
 
     print(f"\nRunning walk-forward: {args.strategy} | train={args.train_periods} periods, "
           f"test={args.test_periods} period(s)\n")
 
-    folds = await tester.run(df, primary_tf=args.timeframe)
+    folds = await tester.run(bars_by_tf, primary_tf=args.timeframe)
 
     if not folds:
         print("Not enough data for walk-forward splits.")
