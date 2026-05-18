@@ -1,15 +1,15 @@
 {
   "total_trades": 15,
   "win_rate": 0.4,
-  "profit_factor": 0.9061,
+  "profit_factor": 0.8964,
   "max_drawdown_pct": 45.92,
   "sharpe_ratio": 0.0777,
   "sortino_ratio": 0.0039,
-  "avg_net_pnl_per_trade": -1.6992,
-  "total_fees_paid": 40.1484,
-  "net_return_pct": -0.5098,
+  "avg_net_pnl_per_trade": -1.8942,
+  "total_fees_paid": 40.1387,
+  "net_return_pct": -0.5683,
   "max_consecutive_losses": 3,
-  "avg_trade_duration_hours": 15.33,
-  "avg_win": 40.9729,
-  "avg_loss": 30.1473
+  "avg_trade_duration_hours": 16.8,
+  "avg_win": 40.9581,
+  "avg_loss": 30.4624
 }
