@@ -4,17 +4,27 @@ strategy_class: bot.strategies.mean_reversion.MeanReversionStrategy
 symbols:
   - BTCUSDT
   - ETHUSDT
+  - BNBUSDT
+  - SOLUSDT
+  - ADAUSDT
+  - DOGEUSDT
+  - AVAXUSDT
+  - LINKUSDT
+  - MATICUSDT
+  - DOTUSDT
+  - XRPUSDT
+  - LTCUSDT
 
 timeframes:
-  signal: "1h"
+  signal: "15m"      # was 1h
   trend: "1D"
 
 # Indicator params
 rsi_period: 14
-rsi_oversold: 28           # require stronger oversold (more extreme reversal signal)
-rsi_overbought: 72         # require stronger overbought
+rsi_oversold: 30           # lowered from 28 to generate more signals
+rsi_overbought: 70         # lowered from 72
 bb_period: 20
-bb_std: 2.0
+bb_std: 1.8                # tighter bands = more touches = more signals (was 2.0)
 
 # Trade params
 take_profit_r: 2.5         # TP at 2.5R → profitable at 40% WR

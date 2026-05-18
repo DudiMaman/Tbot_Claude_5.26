@@ -1,0 +1,36 @@
+strategy_id: momentum_sniper
+strategy_class: bot.strategies.momentum_sniper.MomentumSniperStrategy
+
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+  - BNBUSDT
+  - SOLUSDT
+  - ADAUSDT
+  - DOGEUSDT
+  - AVAXUSDT
+  - LINKUSDT
+  - MATICUSDT
+  - DOTUSDT
+  - XRPUSDT
+  - LTCUSDT
+
+timeframes:
+  signal: "15m"
+  trend: "1h"
+
+# Indicator params
+lookback_bars: 10
+volume_surge_multiplier: 2.0
+rsi_min_long: 50.0
+rsi_max_long: 72.0
+rsi_min_short: 28.0
+rsi_max_short: 50.0
+atr_stop_multiplier: 1.5
+signal_cooldown_bars: 3
+
+# Trade params
+take_profit_r: 2.5
+trailing_stop_pct: 0.015
+
+warmup_bars: 30

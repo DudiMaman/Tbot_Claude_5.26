@@ -4,20 +4,30 @@ strategy_class: bot.strategies.ema_crossover.EMACrossoverStrategy
 symbols:
   - BTCUSDT
   - ETHUSDT
+  - BNBUSDT
+  - SOLUSDT
+  - ADAUSDT
+  - DOGEUSDT
+  - AVAXUSDT
+  - LINKUSDT
+  - MATICUSDT
+  - DOTUSDT
+  - XRPUSDT
+  - LTCUSDT
 
 timeframes:
-  signal: "1h"       # trend + signal generation
-  entry: "15m"       # entry timing
+  signal: "15m"      # trend + signal generation (was 1h)
+  entry: "5m"        # entry timing (was 15m)
   trend: "1D"        # higher timeframe trend filter
 
 # Indicator params
 ema_fast: 9
 ema_slow: 21
 adx_period: 14
-adx_threshold: 27.0  # only trade when ADX > 27 (reduce false signals in weak trends)
+adx_threshold: 22.0  # lowered from 27.0 to generate more signals
 
 # Trade params
-take_profit_r: 3.0        # TP at 3R → 3:1 R:R is profitable even at 40% win rate after fees
+take_profit_r: 2.5        # lowered from 3.0 for faster exits and more trades
 atr_multiplier: 2.0       # stop distance = 2× ATR
 trailing_stop_pct: 0.02   # 2% trailing stop to capture extended trend moves
 

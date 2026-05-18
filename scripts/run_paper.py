@@ -35,11 +35,13 @@ from bot.reporting.logger import configure_logging
 from bot.strategies.ema_crossover import EMACrossoverStrategy
 from bot.strategies.mean_reversion import MeanReversionStrategy
 from bot.strategies.breakout import BreakoutStrategy
+from bot.strategies.momentum_sniper import MomentumSniperStrategy
 
 STRATEGY_MAP = {
     "ema_crossover": EMACrossoverStrategy,
     "mean_reversion": MeanReversionStrategy,
     "breakout": BreakoutStrategy,
+    "momentum_sniper": MomentumSniperStrategy,
 }
 
 _BANNER = """
