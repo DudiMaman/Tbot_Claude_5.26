@@ -1,0 +1,2 @@
+symbol,strategy_id,side,entry_price,exit_price,qty,gross_pnl,fees_paid,net_pnl,opened_at,closed_at,duration_seconds
+BTCUSDT,ema_crossover,short,29882.626695,30555.04695,0.0743,-49.9608,4.4905,-54.4513,2024-08-04T17:00:00+00:00,2024-08-05T18:00:00+00:00,90000.0

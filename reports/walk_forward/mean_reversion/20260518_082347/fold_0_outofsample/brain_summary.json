@@ -1,0 +1,60 @@
+{
+  "bar_count": 2920,
+  "regime": "trending_down",
+  "regime_description": "Strong downtrend \u2014 EMA short side favored",
+  "enabled_strategies": {
+    "mean_reversion": true
+  },
+  "risk_modes": {},
+  "metrics": {
+    "mean_reversion": {
+      "total_trades": 4,
+      "window_trades": 4,
+      "win_rate": 0.25,
+      "profit_factor": 0.704,
+      "avg_net_pnl": -11.43,
+      "rolling_sharpe": -0.128,
+      "rolling_net_pnl": -45.71,
+      "consecutive_losses": 2,
+      "consecutive_wins": 0,
+      "max_consecutive_losses": 2,
+      "total_net_pnl": -45.71,
+      "total_fees": 17.74
+    }
+  },
+  "decisions": {
+    "total_decisions": 1,
+    "action_counts": {
+      "set_param": 1
+    },
+    "recent": [
+      {
+        "timestamp": "2026-05-18T08:24:57.308697+00:00",
+        "strategy_id": "mean_reversion",
+        "action": "set_param",
+        "reason": "warming_up (0/5 trades)",
+        "before": {
+          "atr_multiplier": 1.8
+        },
+        "after": {
+          "atr_multiplier": 2.0
+        },
+        "regime": "unknown",
+        "metrics_snapshot": {
+          "total_trades": 0,
+          "window_trades": 0,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "avg_net_pnl": 0.0,
+          "rolling_sharpe": 0.0,
+          "rolling_net_pnl": 0,
+          "consecutive_losses": 0,
+          "consecutive_wins": 0,
+          "max_consecutive_losses": 0,
+          "total_net_pnl": 0.0,
+          "total_fees": 0.0
+        }
+      }
+    ]
+  }
+}

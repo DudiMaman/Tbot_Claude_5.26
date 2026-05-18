@@ -1,0 +1,143 @@
+{
+  "decisions": [
+    {
+      "timestamp": "2026-05-18T08:09:19.379146+00:00",
+      "strategy_id": "mean_reversion",
+      "action": "set_param",
+      "reason": "warming_up (0/5 trades)",
+      "before": {
+        "atr_multiplier": 1.8
+      },
+      "after": {
+        "atr_multiplier": 2.0
+      },
+      "regime": "unknown",
+      "metrics_snapshot": {
+        "total_trades": 0,
+        "window_trades": 0,
+        "win_rate": 0.0,
+        "profit_factor": 0.0,
+        "avg_net_pnl": 0.0,
+        "rolling_sharpe": 0.0,
+        "rolling_net_pnl": 0,
+        "consecutive_losses": 0,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 0,
+        "total_net_pnl": 0.0,
+        "total_fees": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:09:25.701312+00:00",
+      "strategy_id": "mean_reversion",
+      "action": "set_risk_mode",
+      "reason": "warming_up (4/5 trades)",
+      "before": {
+        "risk_mode": "defensive"
+      },
+      "after": {
+        "risk_mode": "normal"
+      },
+      "regime": "trending_up",
+      "metrics_snapshot": {
+        "total_trades": 4,
+        "window_trades": 4,
+        "win_rate": 0.25,
+        "profit_factor": 0.339,
+        "avg_net_pnl": -26.63,
+        "rolling_sharpe": -0.492,
+        "rolling_net_pnl": -106.52,
+        "consecutive_losses": 0,
+        "consecutive_wins": 1,
+        "max_consecutive_losses": 3,
+        "total_net_pnl": -106.52,
+        "total_fees": 14.89
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:09:28.040117+00:00",
+      "strategy_id": "mean_reversion",
+      "action": "set_risk_mode",
+      "reason": "defensive: sharpe=0.01",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "ranging",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.014,
+        "avg_net_pnl": 0.45,
+        "rolling_sharpe": 0.006,
+        "rolling_net_pnl": 2.27,
+        "consecutive_losses": 0,
+        "consecutive_wins": 2,
+        "max_consecutive_losses": 3,
+        "total_net_pnl": 2.27,
+        "total_fees": 19.26
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:10:19.315295+00:00",
+      "strategy_id": "mean_reversion",
+      "action": "set_param",
+      "reason": "defensive: sharpe=0.01",
+      "before": {
+        "atr_multiplier": 2.0,
+        "rsi_oversold": 28.0,
+        "rsi_overbought": 72.0
+      },
+      "after": {
+        "atr_multiplier": 1.5,
+        "rsi_oversold": 33.0,
+        "rsi_overbought": 67.0
+      },
+      "regime": "low_vol",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.014,
+        "avg_net_pnl": 0.45,
+        "rolling_sharpe": 0.006,
+        "rolling_net_pnl": 2.27,
+        "consecutive_losses": 0,
+        "consecutive_wins": 2,
+        "max_consecutive_losses": 3,
+        "total_net_pnl": 2.27,
+        "total_fees": 19.26
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:10:19.674429+00:00",
+      "strategy_id": "mean_reversion",
+      "action": "set_param",
+      "reason": "defensive: sharpe=0.01, regime_mismatch (trending_down)",
+      "before": {
+        "atr_multiplier": 1.5
+      },
+      "after": {
+        "atr_multiplier": 2.0
+      },
+      "regime": "trending_down",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.014,
+        "avg_net_pnl": 0.45,
+        "rolling_sharpe": 0.006,
+        "rolling_net_pnl": 2.27,
+        "consecutive_losses": 0,
+        "consecutive_wins": 2,
+        "max_consecutive_losses": 3,
+        "total_net_pnl": 2.27,
+        "total_fees": 19.26
+      }
+    }
+  ]
+}

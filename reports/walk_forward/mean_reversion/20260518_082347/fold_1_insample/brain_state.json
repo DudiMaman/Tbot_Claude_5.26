@@ -1,0 +1,85 @@
+{
+  "decisions": [
+    {
+      "timestamp": "2026-05-18T08:25:11.650023+00:00",
+      "strategy_id": "mean_reversion",
+      "action": "set_param",
+      "reason": "warming_up (0/5 trades)",
+      "before": {
+        "atr_multiplier": 1.8
+      },
+      "after": {
+        "atr_multiplier": 2.0
+      },
+      "regime": "unknown",
+      "metrics_snapshot": {
+        "total_trades": 0,
+        "window_trades": 0,
+        "win_rate": 0.0,
+        "profit_factor": 0.0,
+        "avg_net_pnl": 0.0,
+        "rolling_sharpe": 0.0,
+        "rolling_net_pnl": 0,
+        "consecutive_losses": 0,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 0,
+        "total_net_pnl": 0.0,
+        "total_fees": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:25:14.530187+00:00",
+      "strategy_id": "mean_reversion",
+      "action": "set_risk_mode",
+      "reason": "warming_up (4/5 trades)",
+      "before": {
+        "risk_mode": "defensive"
+      },
+      "after": {
+        "risk_mode": "normal"
+      },
+      "regime": "trending_up",
+      "metrics_snapshot": {
+        "total_trades": 4,
+        "window_trades": 4,
+        "win_rate": 0.25,
+        "profit_factor": 0.326,
+        "avg_net_pnl": -27.3,
+        "rolling_sharpe": -0.511,
+        "rolling_net_pnl": -109.22,
+        "consecutive_losses": 0,
+        "consecutive_wins": 1,
+        "max_consecutive_losses": 3,
+        "total_net_pnl": -109.22,
+        "total_fees": 15.84
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:25:25.212974+00:00",
+      "strategy_id": "mean_reversion",
+      "action": "set_risk_mode",
+      "reason": "defensive: sharpe=-0.82, regime_mismatch (trending_down)",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "trending_down",
+      "metrics_snapshot": {
+        "total_trades": 6,
+        "window_trades": 6,
+        "win_rate": 0.167,
+        "profit_factor": 0.197,
+        "avg_net_pnl": -35.79,
+        "rolling_sharpe": -0.824,
+        "rolling_net_pnl": -214.75,
+        "consecutive_losses": 2,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 3,
+        "total_net_pnl": -214.75,
+        "total_fees": 24.13
+      }
+    }
+  ]
+}

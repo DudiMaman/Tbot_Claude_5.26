@@ -1,0 +1,30 @@
+{
+  "bar_count": 2920,
+  "regime": "trending_down",
+  "regime_description": "Strong downtrend \u2014 EMA short side favored",
+  "enabled_strategies": {
+    "ema_crossover": true
+  },
+  "risk_modes": {},
+  "metrics": {
+    "ema_crossover": {
+      "total_trades": 1,
+      "window_trades": 1,
+      "win_rate": 0.0,
+      "profit_factor": 0.0,
+      "avg_net_pnl": -54.45,
+      "rolling_sharpe": 0.0,
+      "rolling_net_pnl": -54.45,
+      "consecutive_losses": 1,
+      "consecutive_wins": 0,
+      "max_consecutive_losses": 1,
+      "total_net_pnl": -54.45,
+      "total_fees": 4.49
+    }
+  },
+  "decisions": {
+    "total_decisions": 0,
+    "action_counts": {},
+    "recent": []
+  }
+}

@@ -1,0 +1,247 @@
+{
+  "decisions": [
+    {
+      "timestamp": "2026-05-18T08:07:42.879697+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "defensive: regime_mismatch (ranging)",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "ranging",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.752,
+        "avg_net_pnl": 25.34,
+        "rolling_sharpe": 0.227,
+        "rolling_net_pnl": 126.7,
+        "consecutive_losses": 1,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 126.7,
+        "total_fees": 20.06
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:07:43.139211+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "normal: sharpe=0.23, regime=trending_up",
+      "before": {
+        "risk_mode": "defensive"
+      },
+      "after": {
+        "risk_mode": "normal"
+      },
+      "regime": "trending_up",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.752,
+        "avg_net_pnl": 25.34,
+        "rolling_sharpe": 0.227,
+        "rolling_net_pnl": 126.7,
+        "consecutive_losses": 1,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 126.7,
+        "total_fees": 20.06
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:07:43.272910+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "defensive: regime_mismatch (ranging)",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "ranging",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.752,
+        "avg_net_pnl": 25.34,
+        "rolling_sharpe": 0.227,
+        "rolling_net_pnl": 126.7,
+        "consecutive_losses": 1,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 126.7,
+        "total_fees": 20.06
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:07:43.408167+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "normal: sharpe=0.23, regime=trending_up",
+      "before": {
+        "risk_mode": "defensive"
+      },
+      "after": {
+        "risk_mode": "normal"
+      },
+      "regime": "trending_up",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.752,
+        "avg_net_pnl": 25.34,
+        "rolling_sharpe": 0.227,
+        "rolling_net_pnl": 126.7,
+        "consecutive_losses": 1,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 126.7,
+        "total_fees": 20.06
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:07:43.796091+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "defensive: regime_mismatch (ranging)",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "ranging",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.752,
+        "avg_net_pnl": 25.34,
+        "rolling_sharpe": 0.227,
+        "rolling_net_pnl": 126.7,
+        "consecutive_losses": 1,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 126.7,
+        "total_fees": 20.06
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:07:44.048207+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "normal: sharpe=0.23, regime=trending_down",
+      "before": {
+        "risk_mode": "defensive"
+      },
+      "after": {
+        "risk_mode": "normal"
+      },
+      "regime": "trending_down",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.752,
+        "avg_net_pnl": 25.34,
+        "rolling_sharpe": 0.227,
+        "rolling_net_pnl": 126.7,
+        "consecutive_losses": 1,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 126.7,
+        "total_fees": 20.06
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:07:44.429096+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "defensive: regime_mismatch (ranging)",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "ranging",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.752,
+        "avg_net_pnl": 25.34,
+        "rolling_sharpe": 0.227,
+        "rolling_net_pnl": 126.7,
+        "consecutive_losses": 1,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 126.7,
+        "total_fees": 20.06
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:07:44.557297+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "normal: sharpe=0.23, regime=trending_down",
+      "before": {
+        "risk_mode": "defensive"
+      },
+      "after": {
+        "risk_mode": "normal"
+      },
+      "regime": "trending_down",
+      "metrics_snapshot": {
+        "total_trades": 5,
+        "window_trades": 5,
+        "win_rate": 0.4,
+        "profit_factor": 1.752,
+        "avg_net_pnl": 25.34,
+        "rolling_sharpe": 0.227,
+        "rolling_net_pnl": 126.7,
+        "consecutive_losses": 1,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 126.7,
+        "total_fees": 20.06
+      }
+    },
+    {
+      "timestamp": "2026-05-18T08:07:45.216587+00:00",
+      "strategy_id": "breakout",
+      "action": "set_risk_mode",
+      "reason": "defensive: sharpe=0.11",
+      "before": {
+        "risk_mode": "normal"
+      },
+      "after": {
+        "risk_mode": "defensive"
+      },
+      "regime": "trending_up",
+      "metrics_snapshot": {
+        "total_trades": 6,
+        "window_trades": 6,
+        "win_rate": 0.333,
+        "profit_factor": 1.325,
+        "avg_net_pnl": 12.06,
+        "rolling_sharpe": 0.115,
+        "rolling_net_pnl": 72.38,
+        "consecutive_losses": 2,
+        "consecutive_wins": 0,
+        "max_consecutive_losses": 2,
+        "total_net_pnl": 72.38,
+        "total_fees": 23.17
+      }
+    }
+  ]
+}
