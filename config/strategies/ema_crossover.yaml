@@ -14,12 +14,12 @@ timeframes:
 ema_fast: 9
 ema_slow: 21
 adx_period: 14
-adx_threshold: 25.0  # only trade when ADX > 25 (trending market)
+adx_threshold: 27.0  # only trade when ADX > 27 (reduce false signals in weak trends)
 
 # Trade params
-take_profit_r: 2.0        # TP at 2R
-atr_multiplier: 2.0       # stop distance = 2× ATR (was 1.5×; wider avoids same-bar stop-outs)
-trailing_stop_pct: 0.015  # 1.5% trailing stop once in profit
+take_profit_r: 3.0        # TP at 3R → 3:1 R:R is profitable even at 40% win rate after fees
+atr_multiplier: 2.0       # stop distance = 2× ATR
+trailing_stop_pct: 0.02   # 2% trailing stop to capture extended trend moves
 
 # Warm-up bars required before generating signals
 warmup_bars: 50

@@ -204,10 +204,18 @@ class BacktestEngine:
         pass  # handled via callback
 
     async def _check_stop_take(self, row: pd.Series, tf: str, ts: datetime) -> None:
-        """Check if any open positions hit SL or TP on this bar."""
+        """Check if any open positions hit SL or TP on this bar.
+
+        When both SL and TP are touched on the same bar we use the bar direction
+        (close vs open) as a heuristic: a bullish bar (close > open) means price
+        rose first → TP wins for longs, SL wins for shorts; a bearish bar means
+        the opposite.  This avoids the systematic pessimism of always preferring SL.
+        """
         for sym, pos in list(self._portfolio.open_positions.items()):
+            bar_open = float(row.get("open", row.get("close", 0)))
             bar_high = float(row.get("high", row.get("close", 0)))
             bar_low = float(row.get("low", row.get("close", 0)))
+            bar_close = float(row.get("close", 0))
 
             hit_sl = hit_tp = False
             if pos.side == "long":
@@ -217,20 +225,33 @@ class BacktestEngine:
                 hit_sl = bar_high >= pos.stop_loss
                 hit_tp = bar_low <= pos.take_profit
 
-            if hit_sl or hit_tp:
-                exit_price = pos.stop_loss if hit_sl else pos.take_profit
-                fee = exit_price * pos.qty_filled * self._bcfg.fee_schedule.taker
-                fill = FillEvent(
-                    order_id=f"exit_{sym}_{ts.timestamp():.0f}",
-                    symbol=sym,
-                    side="sell" if pos.side == "long" else "buy",
-                    qty_filled=pos.qty_filled,
-                    avg_price=exit_price,
-                    fee_paid=fee,
-                    timestamp=ts,
-                    strategy_id=pos.strategy_id,
-                )
-                self._portfolio.close_position(fill)
+            if not (hit_sl or hit_tp):
+                continue
+
+            # Determine exit price using bar-direction heuristic for ambiguous bars
+            if hit_sl and hit_tp:
+                bullish_bar = bar_close >= bar_open
+                if pos.side == "long":
+                    exit_price = pos.take_profit if bullish_bar else pos.stop_loss
+                else:
+                    exit_price = pos.take_profit if not bullish_bar else pos.stop_loss
+            elif hit_tp:
+                exit_price = pos.take_profit
+            else:
+                exit_price = pos.stop_loss
+
+            fee = exit_price * pos.qty_filled * self._bcfg.fee_schedule.taker
+            fill = FillEvent(
+                order_id=f"exit_{sym}_{ts.timestamp():.0f}",
+                symbol=sym,
+                side="sell" if pos.side == "long" else "buy",
+                qty_filled=pos.qty_filled,
+                avg_price=exit_price,
+                fee_paid=fee,
+                timestamp=ts,
+                strategy_id=pos.strategy_id,
+            )
+            self._portfolio.close_position(fill)
 
     def _generate_report(self) -> dict:
         trades = self._portfolio.tracker.closed_trades

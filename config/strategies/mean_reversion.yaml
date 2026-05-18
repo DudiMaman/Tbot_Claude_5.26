@@ -11,14 +11,14 @@ timeframes:
 
 # Indicator params
 rsi_period: 14
-rsi_oversold: 30
-rsi_overbought: 70
+rsi_oversold: 28           # require stronger oversold (more extreme reversal signal)
+rsi_overbought: 72         # require stronger overbought
 bb_period: 20
 bb_std: 2.0
 
 # Trade params
-take_profit_r: 1.5
-atr_multiplier: 2.0       # stop distance = 2× ATR
-trailing_stop_pct: null   # no trailing stop for mean reversion
+take_profit_r: 2.5         # TP at 2.5R → profitable at 40% WR
+atr_multiplier: 1.8        # slightly tighter stop; mean reversion snaps back quickly
+trailing_stop_pct: null    # no trailing stop for mean reversion
 
 warmup_bars: 30
