@@ -312,16 +312,24 @@ class TradingEngine:
                     self._pending_signals.pop(sym, None)
 
     async def _daily_reset_loop(self) -> None:
-        """Reset daily P&L and circuit breakers at UTC midnight."""
-        import time as _time
+        """Reset daily P&L and circuit breakers at UTC midnight; send Telegram summary."""
         while self._running:
             now = datetime.now(timezone.utc)
-            # Sleep until next UTC midnight
             midnight_secs = (24 - now.hour) * 3600 - now.minute * 60 - now.second
-            await asyncio.sleep(midnight_secs)
+            await asyncio.sleep(max(midnight_secs, 1))
+
+            equity = self._portfolio.equity()
+            daily_pnl = self._portfolio.daily_net_pnl()
+            open_pos = self._portfolio.open_position_count()
+            win_rate = self._portfolio.tracker.win_rate()
+
             self._portfolio.reset_daily_pnl()
             self._risk_mgr.reset_daily()
             logger.info("daily_reset_complete")
+
+            asyncio.create_task(
+                send_daily_summary(equity, daily_pnl, open_pos, win_rate, self._mode.value)
+            )
 
     async def _sync_positions_on_startup(self) -> None:
         try:

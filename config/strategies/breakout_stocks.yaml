@@ -1,0 +1,23 @@
+strategy_id: breakout
+strategy_class: bot.strategies.breakout.BreakoutStrategy
+
+symbols:
+  - SPY
+  - QQQ
+  - AAPL
+
+timeframes:
+  signal: "1D"        # daily breakouts only — avoids PDT rule
+  trend: "1D"         # 50-day EMA trend filter
+
+# Indicator params — tuned for daily equity bars
+lookback_bars: 20           # 20-day high/low (~1 month of trading days)
+confirmation_bars: 1        # enter on first close above resistance + volume
+volume_surge_multiplier: 1.5  # stocks require stronger volume confirmation than crypto
+atr_min_break: 0.15           # break must be at least 0.15×ATR above resistance
+atr_stop_multiplier: 2.0      # stop = entry - 2×ATR (daily ATR is wider)
+
+take_profit_r: 3.0            # 3:1 R:R
+trailing_stop_pct: 0.04       # 4% trailing stop for daily breakout trends
+
+warmup_bars: 25

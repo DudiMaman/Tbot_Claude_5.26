@@ -1,0 +1,25 @@
+strategy_id: ema_crossover
+strategy_class: bot.strategies.ema_crossover.EMACrossoverStrategy
+
+symbols:
+  - SPY
+  - QQQ
+  - AAPL
+
+timeframes:
+  signal: "1D"        # daily signal for stocks (avoids PDT rule on <$25k accounts)
+  entry: "1D"         # same as signal — daily bar entry
+  trend: "1D"         # use 200-day EMA for trend context on daily TF
+
+# Indicator params — wider for daily bars
+ema_fast: 20          # 20-day EMA (institutional short-term trend)
+ema_slow: 50          # 50-day EMA (institutional medium-term trend)
+adx_period: 14
+adx_threshold: 25.0   # ADX > 25 on daily bars
+
+# Trade params
+take_profit_r: 3.0    # 3:1 R:R (same logic applies after SEC fee + slippage)
+atr_multiplier: 2.0   # stop = 2× ATR(14) on daily bars
+trailing_stop_pct: 0.03  # 3% trailing stop for daily-bar trend following
+
+warmup_bars: 55
