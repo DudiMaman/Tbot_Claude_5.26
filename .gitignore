@@ -11,5 +11,6 @@ build/
 data/synthetic/
 data_cache/
 logs/
+WARNING/
 KILL_SWITCH
 reports/
