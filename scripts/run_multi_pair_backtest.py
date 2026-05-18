@@ -39,27 +39,52 @@ _STRATEGY_MAP = {
 }
 
 
-def load_bars_for_symbol(symbol: str, primary_tf: str, period: str) -> dict[str, pd.DataFrame] | None:
-    """Load primary + daily timeframe data for a symbol."""
-    primary_file = DATA_DIR / f"{symbol}_{primary_tf}_{period}.parquet"
+def _resample_tf(df_1h: pd.DataFrame, target_tf: str) -> pd.DataFrame:
+    """Resample 1h OHLCV data to a coarser timeframe."""
+    rule_map = {"4h": "4h", "1D": "1D", "1d": "1D"}
+    rule = rule_map.get(target_tf, target_tf.upper())
+    return df_1h.resample(rule).agg(
+        {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+    ).dropna()
 
-    # For 4h: resample from 1h data
+
+def load_bars_for_symbol(
+    symbol: str,
+    primary_tf: str,
+    period: str,
+    extra_tfs: list[str] | None = None,
+) -> dict[str, pd.DataFrame] | None:
+    """Load primary + all required secondary timeframes for a symbol.
+
+    extra_tfs lists the non-primary timeframes the strategy needs
+    (e.g. ["1h", "1D"]).  Any TF that isn't the primary is sourced from
+    the 1h 2-year file (resampled as needed) so we always have a full
+    history to back-fill indicators.
+    """
+    # Canonical 1h source for resampling anything coarser
+    src_1h_file = DATA_DIR / f"{symbol}_1h_2y.parquet"
+
+    def _load_1h() -> pd.DataFrame | None:
+        if not src_1h_file.exists():
+            return None
+        df = pd.read_parquet(src_1h_file)
+        if df.index.tz is None:
+            df.index = df.index.tz_localize("UTC")
+        return df
+
+    # For 4h: always resample from 1h
     if primary_tf == "4h":
-        source_file = DATA_DIR / f"{symbol}_1h_2y.parquet"
-        if not source_file.exists():
+        df_1h = _load_1h()
+        if df_1h is None:
             print(f"  Missing 1h source for {symbol}, skipping")
             return None
-        df_1h = pd.read_parquet(source_file)
-        if df_1h.index.tz is None:
-            df_1h.index = df_1h.index.tz_localize("UTC")
-        df_primary = df_1h.resample("4h").agg(
-            {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
-        ).dropna()
-        df_daily = df_1h.resample("1D").agg(
-            {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
-        ).dropna()
-        return {"4h": df_primary, "1D": df_daily}
+        bars: dict[str, pd.DataFrame] = {
+            "4h": _resample_tf(df_1h, "4h"),
+            "1D": _resample_tf(df_1h, "1D"),
+        }
+        return bars
 
+    primary_file = DATA_DIR / f"{symbol}_{primary_tf}_{period}.parquet"
     if not primary_file.exists():
         print(f"  Missing data for {symbol} {primary_tf} {period}, skipping")
         return None
@@ -70,23 +95,27 @@ def load_bars_for_symbol(symbol: str, primary_tf: str, period: str) -> dict[str,
 
     bars = {primary_tf: df_primary}
 
-    # Daily trend filter
-    daily_file = DATA_DIR / f"{symbol}_1d_2y.parquet"
-    if not daily_file.exists():
-        daily_file = DATA_DIR / f"{symbol}_1h_2y.parquet"
-        if daily_file.exists():
-            df_1h = pd.read_parquet(daily_file)
-            if df_1h.index.tz is None:
-                df_1h.index = df_1h.index.tz_localize("UTC")
-            df_daily = df_1h.resample("1D").agg(
-                {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
-            ).dropna()
-            bars["1D"] = df_daily
-    else:
-        df_daily = pd.read_parquet(daily_file)
-        if df_daily.index.tz is None:
-            df_daily.index = df_daily.index.tz_localize("UTC")
-        bars["1D"] = df_daily
+    # Load every required secondary TF from the 1h source
+    needed = set(extra_tfs or []) | {"1D"}  # always include daily for trend filter
+    needed.discard(primary_tf)
+    if needed:
+        df_1h = _load_1h()
+        if df_1h is not None:
+            for tf in needed:
+                if tf in ("1h", "1H"):
+                    bars[tf] = df_1h
+                elif tf in ("1D", "1d"):
+                    # Prefer dedicated daily file if available
+                    daily_file = DATA_DIR / f"{symbol}_1d_2y.parquet"
+                    if daily_file.exists():
+                        df_d = pd.read_parquet(daily_file)
+                        if df_d.index.tz is None:
+                            df_d.index = df_d.index.tz_localize("UTC")
+                        bars[tf] = df_d
+                    else:
+                        bars[tf] = _resample_tf(df_1h, "1D")
+                else:
+                    bars[tf] = _resample_tf(df_1h, tf)
 
     return bars
 
@@ -100,7 +129,11 @@ async def run_strategy_on_symbol(
 ) -> dict | None:
     strategy_cls, primary_tf, period = _STRATEGY_MAP[strategy_name]
 
-    bars = load_bars_for_symbol(symbol, primary_tf, period)
+    # Load strategy config first to know which secondary TFs are required
+    strategy_cfg_tmp = load_strategy_config(strategy_name, config_dir)
+    extra_tfs = [tf for tf in strategy_cfg_tmp.timeframes.values() if tf != primary_tf]
+
+    bars = load_bars_for_symbol(symbol, primary_tf, period, extra_tfs=extra_tfs)
     if bars is None:
         return None
 

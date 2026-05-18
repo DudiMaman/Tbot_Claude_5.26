@@ -188,34 +188,49 @@ def test_allocator_warming_up():
     assert dec.risk_mode == "normal" or dec.risk_mode.value == "normal"
 
 
-def test_allocator_disable_long_losing_streak():
-    alloc = StrategyAllocator(losses_disable=7)
+def test_allocator_disable_requires_both_streak_and_bad_pf():
+    """Disable requires BOTH extreme streak AND terrible profit_factor.
+    A high-RR strategy with 10% WR regularly hits 7+ consecutive losses but
+    is profitable overall — it must NOT be disabled based on streak alone."""
+    alloc = StrategyAllocator(losses_disable=7, pf_disable=0.3)
     m = StrategyMetrics(strategy_id="ema")
+    # Good trades (profit_factor > 0.3)
     for _ in range(20):
         m.record_trade(_trade(10))
-    m.consecutive_losses = 7  # inject losing streak
+    m.consecutive_losses = 7  # inject streak
+    # profit_factor is > 0.3 (all profitable trades), so should NOT disable
     dec = alloc.decide("ema", m, MarketRegime.TRENDING_UP, currently_enabled=True)
-    assert dec.enabled is False
+    assert dec.enabled is True
+
+    # Now inject terrible profit factor (all losing trades)
+    m2 = StrategyMetrics(strategy_id="ema")
+    for _ in range(20):
+        m2.record_trade(_trade(-10))  # all losses
+    m2.consecutive_losses = 7
+    dec2 = alloc.decide("ema", m2, MarketRegime.TRENDING_UP, currently_enabled=True)
+    assert dec2.enabled is False
 
 
 def test_allocator_reenable_after_recovery():
-    alloc = StrategyAllocator(losses_disable=7, losses_reenable=1)
+    alloc = StrategyAllocator(losses_disable=7, losses_reenable=3, pf_defensive=0.7)
     m = StrategyMetrics(strategy_id="ema")
+    # Add some trades so we're past warmup
     for _ in range(20):
         m.record_trade(_trade(10))
     m.consecutive_losses = 0  # streak cleared
+    # profit_factor >= pf_defensive (all wins → PF = 1.0 > 0.7)
     dec = alloc.decide("ema", m, MarketRegime.TRENDING_UP, currently_enabled=False)
     assert dec.enabled is True
     mode = dec.risk_mode if isinstance(dec.risk_mode, str) else dec.risk_mode.value
     assert mode == "defensive"
 
 
-def test_allocator_defensive_on_streak():
-    alloc = StrategyAllocator(losses_defensive=3, losses_disable=10)
+def test_allocator_defensive_on_bad_pf_and_sharpe():
+    """Defensive mode when profit_factor is low AND Sharpe is negative."""
+    alloc = StrategyAllocator(pf_defensive=0.7)
     m = StrategyMetrics(strategy_id="ema")
     for _ in range(20):
-        m.record_trade(_trade(10))
-    m.consecutive_losses = 3
+        m.record_trade(_trade(-5))  # consistent small losses → bad PF and Sharpe
     dec = alloc.decide("ema", m, MarketRegime.TRENDING_UP, currently_enabled=True)
     mode = dec.risk_mode if isinstance(dec.risk_mode, str) else dec.risk_mode.value
     assert mode == "defensive"
@@ -230,13 +245,24 @@ def test_allocator_normal_default():
     assert mode in ("normal", "aggressive")
 
 
-def test_allocator_regime_mismatch_is_defensive():
-    alloc = StrategyAllocator()
-    # EMA crossover in RANGING → mismatch
+def test_allocator_regime_mismatch_and_bad_sharpe_is_defensive():
+    """Regime mismatch alone should NOT cut size if the strategy is performing well.
+    Both mismatch AND bad Sharpe are required to trigger defensive mode."""
+    alloc = StrategyAllocator(sharpe_defensive=-0.3)
+    # EMA crossover in RANGING → mismatch, but _make_metrics gives good PF/Sharpe
     m = _make_metrics()
     dec = alloc.decide("ema_crossover", m, MarketRegime.RANGING, currently_enabled=True)
     mode = dec.risk_mode if isinstance(dec.risk_mode, str) else dec.risk_mode.value
-    assert mode == "defensive"
+    # Good metrics → should be NORMAL or better despite regime mismatch
+    assert mode in ("normal", "aggressive")
+
+    # With bad Sharpe AND mismatch → defensive
+    m_bad = StrategyMetrics(strategy_id="ema_crossover")
+    for _ in range(20):
+        m_bad.record_trade(_trade(-5))
+    dec2 = alloc.decide("ema_crossover", m_bad, MarketRegime.RANGING, currently_enabled=True)
+    mode2 = dec2.risk_mode if isinstance(dec2.risk_mode, str) else dec2.risk_mode.value
+    assert mode2 == "defensive"
 
 
 # ── RiskManager per-strategy risk mode ───────────────────────────────────────

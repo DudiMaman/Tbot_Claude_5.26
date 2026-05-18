@@ -3,14 +3,18 @@ StrategyAllocator — maps {regime, strategy_metrics} → allocation decisions.
 
 Decision hierarchy (first matching rule wins):
   1. Not enough data → keep defaults, no change
-  2. Extreme losing streak → disable strategy
-  3. Auto re-enable if streak has cleared and strategy was disabled
-  4. Consecutive losses above threshold → defensive
-  5. Regime mismatch + bad Sharpe → defensive
-  6. Good Sharpe + regime match → aggressive
-  7. Default → normal
+  2. Extreme streak AND terrible profit factor → disable strategy
+     (profit_factor guard prevents disabling high-RR strategies that are
+      briefly losing — a 10% WR strategy with 25R avg winners will hit
+      7 consecutive losses 48% of the time; that is normal, not a failure)
+  3. Auto re-enable if streak + profit_factor have recovered
+  4. Still disabled and not yet recovered → stay disabled
+  5. Bad profit factor + bad Sharpe → defensive
+  6. Regime mismatch + bad Sharpe → defensive
+  7. Good Sharpe + good profit factor + regime match → aggressive
+  8. Default → normal
 
-Parameter overrides are also emitted based on the vol regime:
+Parameter overrides emitted based on vol regime:
   HIGH_VOL → wider ATR stop (2.5×)
   LOW_VOL  → tighter ATR stop (1.5×)
   else     → standard (2.0×)
@@ -39,20 +43,24 @@ class AllocationDecision:
 class StrategyAllocator:
     def __init__(
         self,
-        min_trades: int = 5,
-        sharpe_aggressive: float = 0.7,
-        sharpe_defensive: float = 0.15,
-        sharpe_disable: float = -0.6,
-        losses_defensive: int = 3,
-        losses_disable: int = 7,
-        losses_reenable: int = 1,       # re-enable once streak drops below this
+        min_trades: int = 15,           # raised: 5 is too few for 10% WR strategies
+        sharpe_aggressive: float = 0.5,
+        sharpe_defensive: float = -0.3,
+        losses_defensive: int = 12,     # raised from 3: 3 losses in a row is normal at 10% WR
+        losses_disable: int = 20,       # raised from 7: P(20 in a row @ 10% WR) = 12%
+        pf_disable: float = 0.3,        # profit factor must ALSO be terrible to disable
+        pf_defensive: float = 0.7,      # profit factor for defensive mode
+        pf_aggressive: float = 1.5,     # profit factor for aggressive mode
+        losses_reenable: int = 3,       # re-enable once streak drops below this
     ) -> None:
         self._min_trades = min_trades
         self._sharpe_aggressive = sharpe_aggressive
         self._sharpe_defensive = sharpe_defensive
-        self._sharpe_disable = sharpe_disable
         self._losses_defensive = losses_defensive
         self._losses_disable = losses_disable
+        self._pf_disable = pf_disable
+        self._pf_defensive = pf_defensive
+        self._pf_aggressive = pf_aggressive
         self._losses_reenable = losses_reenable
 
     def decide(
@@ -73,66 +81,77 @@ class StrategyAllocator:
 
         streak = metrics.consecutive_losses
         sharpe = metrics.rolling_sharpe
+        pf = metrics.profit_factor
         affinity = STRATEGY_REGIME_AFFINITY.get(strategy_id, [])
         regime_match = (not affinity) or (regime in affinity) or (regime == MarketRegime.UNKNOWN)
 
-        # ── 2. Extreme streak → disable ─────────────────────────────────────
-        if streak >= self._losses_disable:
+        # ── 2. Extreme streak AND terrible profit factor → disable ──────────
+        # Both conditions required: high-RR strategies (10% WR, 15R winners)
+        # regularly hit 7-10 consecutive losses but are profitable overall.
+        # Only disable if the money is actually being destroyed (PF < 0.3).
+        if streak >= self._losses_disable and pf < self._pf_disable:
             return AllocationDecision(
                 risk_mode=RiskMode.DEFENSIVE,
                 enabled=False,
                 param_overrides={},
-                reason=f"disabled: {streak} consecutive losses (threshold {self._losses_disable})",
+                reason=(
+                    f"disabled: {streak} consecutive losses and "
+                    f"profit_factor={pf:.2f} < {self._pf_disable}"
+                ),
             )
 
-        # ── 3. Re-enable after streak cleared ───────────────────────────────
-        if not currently_enabled and streak < self._losses_reenable:
+        # ── 3. Re-enable after streak + PF have recovered ───────────────────
+        if not currently_enabled and streak < self._losses_reenable and pf >= self._pf_defensive:
             return AllocationDecision(
                 risk_mode=RiskMode.DEFENSIVE,
                 enabled=True,
                 param_overrides=self._param_overrides(regime, strategy_id),
-                reason=f"re-enabled: losing streak resolved (streak={streak})",
+                reason=f"re-enabled: streak={streak}, profit_factor={pf:.2f}",
             )
 
         if not currently_enabled:
-            # Still disabled — streak hasn't cleared yet
+            # Still disabled — conditions haven't recovered yet
             return AllocationDecision(
                 risk_mode=RiskMode.DEFENSIVE,
                 enabled=False,
                 param_overrides={},
-                reason=f"still disabled: streak={streak} >= reenable threshold {self._losses_reenable}",
+                reason=f"still disabled: streak={streak}, profit_factor={pf:.2f}",
             )
 
-        # ── 4. Consecutive losses threshold → defensive ──────────────────────
-        if streak >= self._losses_defensive:
+        # ── 4. Bad profit factor + bad Sharpe → defensive ───────────────────
+        # Use PF as the primary guard: if the strategy is consistently losing
+        # more than it wins (PF < 0.7) AND the Sharpe is negative, cut size.
+        if pf < self._pf_defensive and sharpe < self._sharpe_defensive:
             return AllocationDecision(
                 risk_mode=RiskMode.DEFENSIVE,
                 enabled=True,
                 param_overrides=self._param_overrides(regime, strategy_id),
-                reason=f"defensive: {streak} consecutive losses",
+                reason=f"defensive: profit_factor={pf:.2f}, sharpe={sharpe:.2f}",
             )
 
-        # ── 5. Bad Sharpe + regime mismatch → defensive ─────────────────────
-        if sharpe < self._sharpe_defensive or not regime_match:
-            reason_parts = []
-            if sharpe < self._sharpe_defensive:
-                reason_parts.append(f"sharpe={sharpe:.2f}")
-            if not regime_match:
-                reason_parts.append(f"regime_mismatch ({regime.value})")
+        # ── 5. Regime mismatch + bad Sharpe → defensive ─────────────────────
+        if not regime_match and sharpe < self._sharpe_defensive:
             return AllocationDecision(
                 risk_mode=RiskMode.DEFENSIVE,
                 enabled=True,
                 param_overrides=self._param_overrides(regime, strategy_id),
-                reason="defensive: " + ", ".join(reason_parts),
+                reason=f"defensive: regime_mismatch ({regime.value}), sharpe={sharpe:.2f}",
             )
 
-        # ── 6. High Sharpe + regime match → aggressive ───────────────────────
-        if sharpe >= self._sharpe_aggressive and regime_match:
+        # ── 6. Strong metrics + regime match → aggressive ────────────────────
+        if (
+            sharpe >= self._sharpe_aggressive
+            and pf >= self._pf_aggressive
+            and regime_match
+        ):
             return AllocationDecision(
                 risk_mode=RiskMode.AGGRESSIVE,
                 enabled=True,
                 param_overrides=self._param_overrides(regime, strategy_id),
-                reason=f"aggressive: sharpe={sharpe:.2f}, regime aligned ({regime.value})",
+                reason=(
+                    f"aggressive: sharpe={sharpe:.2f}, "
+                    f"profit_factor={pf:.2f}, regime={regime.value}"
+                ),
             )
 
         # ── 7. Default ───────────────────────────────────────────────────────
@@ -140,7 +159,7 @@ class StrategyAllocator:
             risk_mode=RiskMode.NORMAL,
             enabled=True,
             param_overrides=self._param_overrides(regime, strategy_id),
-            reason=f"normal: sharpe={sharpe:.2f}, regime={regime.value}",
+            reason=f"normal: sharpe={sharpe:.2f}, pf={pf:.2f}, regime={regime.value}",
         )
 
     @staticmethod

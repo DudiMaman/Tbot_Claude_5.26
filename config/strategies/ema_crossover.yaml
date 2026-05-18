@@ -36,7 +36,7 @@ adx_threshold: 20.0   # low threshold = catch trends early
 # A coin going 300% should return 250%+, not exit at 2.5R.
 take_profit_r: 999.0      # effectively disabled — trailing stop decides exit
 atr_multiplier: 2.0       # stop distance = 2× ATR from entry
-trailing_stop_pct: 0.07   # 7% trailing — survives normal pullbacks in a bull run
-                           # Brain overrides to 10% in TRENDING_UP regime
+trailing_stop_pct: 0.15   # 15% trailing — survives 10-12% crypto corrections in bull runs
+                           # Brain can widen to 20% in TRENDING_UP if PF is strong
 
 warmup_bars: 50

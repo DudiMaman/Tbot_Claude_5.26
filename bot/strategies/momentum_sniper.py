@@ -141,12 +141,15 @@ class MomentumSniperStrategy(BaseStrategy):
         ema21 = calc_ema(df["close"], 21).iloc[-1]
         ema9_bullish = float(ema9) > float(ema21)
 
-        # Optional 1h trend filter
-        trend_tf = self.config.timeframes.get("trend", "1h")
-        trend_df = context.bars.get(trend_tf)
+        # Trend filter — wait for full 50-bar warmup before trading.
+        # When no trend TF is configured the filter is skipped entirely.
+        trend_tf = self.config.timeframes.get("trend")
         trend_bullish: bool | None = None
         trend_bearish: bool | None = None
-        if trend_df is not None and len(trend_df) >= 50:
+        if trend_tf is not None:
+            trend_df = context.bars.get(trend_tf)
+            if trend_df is None or len(trend_df) < 50:
+                return None  # skip until trend EMA50 is warmed up
             ema50_trend = calc_ema(trend_df["close"], 50).iloc[-1]
             last_close_1h = float(trend_df["close"].iloc[-1])
             trend_bullish = last_close_1h > float(ema50_trend)

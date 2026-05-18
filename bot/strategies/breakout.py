@@ -79,11 +79,14 @@ class BreakoutStrategy(BaseStrategy):
         except Exception:
             atr_val = (resistance - support) * 0.1
 
-        # 1D trend filter: only trade in direction of daily trend
-        trend_tf = self.config.timeframes.get("trend", "1D")
-        trend_df = context.bars.get(trend_tf)
+        # 1D trend filter — wait for full 50-bar warmup before trading.
+        # When no trend TF is configured the filter is skipped entirely.
+        trend_tf = self.config.timeframes.get("trend")
         daily_uptrend: bool | None = None
-        if trend_df is not None and len(trend_df) >= 50:
+        if trend_tf is not None:
+            trend_df = context.bars.get(trend_tf)
+            if trend_df is None or len(trend_df) < 50:
+                return None  # skip until 1D EMA50 is warmed up
             ema50 = calc_ema(trend_df["close"], 50).iloc[-1]
             daily_uptrend = float(trend_df["close"].iloc[-1]) > float(ema50)
 

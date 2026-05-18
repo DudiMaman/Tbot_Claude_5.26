@@ -64,18 +64,22 @@ class EMACrossoverStrategy(BaseStrategy):
         if not bullish_cross and not bearish_cross:
             return None
 
-        # 1D trend filter: only trade in direction of daily trend
-        trend_tf = self.config.timeframes.get("trend", "1D")
-        trend_df = context.bars.get(trend_tf)
-        daily_uptrend: bool | None = None
-        if trend_df is not None and len(trend_df) >= 50:
+        # 1D trend filter: only trade in direction of daily trend.
+        # When a trend timeframe is configured, wait for the full 50-bar warmup
+        # before trading — unfiltered entries during warmup destroy early capital.
+        trend_tf = self.config.timeframes.get("trend")
+        if trend_tf is not None:
+            trend_df = context.bars.get(trend_tf)
+            if trend_df is None or len(trend_df) < 50:
+                return None  # skip until trend EMA50 is warmed up
+
             ema50_trend = calc_ema(trend_df["close"], 50).iloc[-1]
             daily_uptrend = float(trend_df["close"].iloc[-1]) > float(ema50_trend)
 
-        if bullish_cross and daily_uptrend is False:
-            return None
-        if bearish_cross and daily_uptrend is True:
-            return None
+            if bullish_cross and not daily_uptrend:
+                return None
+            if bearish_cross and daily_uptrend:
+                return None
 
         entry = context.current_bar.close
         atr_val = curr.get("atr", entry * 0.01)
