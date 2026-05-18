@@ -2,24 +2,16 @@ strategy_id: ema_crossover
 strategy_class: bot.strategies.ema_crossover.EMACrossoverStrategy
 
 symbols:
-  - BTCUSDT
-  - ETHUSDT
-  - BNBUSDT
-  - SOLUSDT
-  - ADAUSDT
-  - DOGEUSDT
-  - AVAXUSDT
-  - LINKUSDT
-  - MATICUSDT
-  - DOTUSDT
-  - XRPUSDT
-  - LTCUSDT
-  - INJUSDT
-  - ARBUSDT
-  - OPUSDT
-  - RENDERUSDT
-  - TIAUSDT
-  - WIFUSDT
+  # Best EMA performers from 2yr backtest. XRP/ARB/OP removed — assigned to
+  # momentum_sniper which outperforms EMA on those explosive pairs.
+  # MATIC/LTC/BNB removed — consistent losers on EMA crossover.
+  - BTCUSDT    # +68.8% in 2yr backtest
+  - ETHUSDT    # +23.1%
+  - SOLUSDT    # +158.5%
+  - LINKUSDT   # +66.1%
+  - INJUSDT    # +75.8%
+  - DOTUSDT    # +30.2%
+  - AVAXUSDT   # marginal positive — kept for diversification
 
 timeframes:
   signal: "1h"     # 1h for 2-year backtests; switch to 15m for live trading with 15m feed
