@@ -39,7 +39,7 @@ signal_cooldown_bars: 3
 # Trade params — NO fixed TP. Trail the explosive move.
 # PEPE/WIF/BONK type coins can go 500-1000% in a cycle — don't cap it.
 take_profit_r: 999.0
-trailing_stop_pct: 0.05   # 5% trailing — tighter than EMA since momentum fades faster
-                           # Brain widens to 8-10% in trending regime
+trailing_stop_pct: 0.10   # 10% trailing — wide enough to survive crypto corrections
+                           # without getting stopped out mid-move on PEPE/WIF/BONK
 
 warmup_bars: 30

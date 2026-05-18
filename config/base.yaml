@@ -7,9 +7,11 @@ risk_mode: normal              # defensive | normal | aggressive
 execution_mode: paper          # backtest | paper | live
 
 # Consecutive-loss streak thresholds
-losing_streak_defensive: 5    # switch to DEFENSIVE after this many consecutive losses
-losing_streak_halt: 10        # halt new entries after this many consecutive losses
-losing_streak_halt_reset_bars: 50  # auto-resume after N bars in halt (trend strategies need this)
+# Low-WR trend strategies (10% WR): P(5 in a row) = 59%, P(12 in a row) = 28%.
+# These thresholds must be high enough that normal losing streaks don't trigger halts.
+losing_streak_defensive: 10   # switch to DEFENSIVE after this many consecutive losses
+losing_streak_halt: 20        # halt new entries (P(20 in a row @ 10% WR) = 12%)
+losing_streak_halt_reset_bars: 200  # auto-resume after N bars (200 × 15m = 50h cool-down)
 
 # Crypto/stock exposure caps (portfolio level)
 max_crypto_exposure_pct: 0.80
