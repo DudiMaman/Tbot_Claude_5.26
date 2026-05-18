@@ -71,16 +71,28 @@ class LosingStreakGuard:
         self._config = config
         self._halted = False
         self._risk_mode = RiskMode.NORMAL
+        self._halt_bars_remaining: int = 0
 
     def update(self, consecutive_losses: int) -> RiskMode:
+        # Auto-reset halt after N bars of cool-down
+        if self._halted and self._config.losing_streak_halt_reset_bars > 0:
+            self._halt_bars_remaining -= 1
+            if self._halt_bars_remaining <= 0:
+                self._halted = False
+                self._risk_mode = RiskMode.DEFENSIVE
+                logger.info("losing_streak_halt_reset", mode="defensive")
+                return self._risk_mode
+
         if consecutive_losses >= self._config.losing_streak_halt:
-            self._halted = True
+            if not self._halted:
+                self._halted = True
+                self._halt_bars_remaining = self._config.losing_streak_halt_reset_bars
+                logger.error(
+                    "losing_streak_halt",
+                    consecutive_losses=consecutive_losses,
+                    threshold=self._config.losing_streak_halt,
+                )
             self._risk_mode = RiskMode.DEFENSIVE
-            logger.error(
-                "losing_streak_halt",
-                consecutive_losses=consecutive_losses,
-                threshold=self._config.losing_streak_halt,
-            )
         elif consecutive_losses >= self._config.losing_streak_defensive:
             self._halted = False
             self._risk_mode = RiskMode.DEFENSIVE
@@ -91,11 +103,13 @@ class LosingStreakGuard:
             )
         else:
             self._halted = False
+            self._risk_mode = RiskMode.NORMAL
 
         return self._risk_mode
 
     def reset(self) -> None:
         self._halted = False
+        self._halt_bars_remaining = 0
         self._risk_mode = RiskMode.NORMAL
 
     @property

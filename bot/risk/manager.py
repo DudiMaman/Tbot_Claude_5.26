@@ -149,6 +149,7 @@ class RiskManager:
 
     def reset_daily(self) -> None:
         self._daily_breaker.reset()
+        self._portfolio.reset_daily_pnl()
 
     def reset_streak(self) -> None:
         self._streak_guard.reset()

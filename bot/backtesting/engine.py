@@ -143,6 +143,13 @@ class BacktestEngine:
                     if signal is not None:
                         await self._handle_signal(signal, step_size)
 
+            # Reset daily P&L at UTC midnight
+            if i > 0:
+                prev_ts = primary_df.index[i - 1].to_pydatetime()
+                if ts_dt.date() != prev_ts.date():
+                    self._portfolio.reset_daily_pnl()
+                    self._risk_mgr.reset_daily()
+
             # Update trailing stops on every bar before checking SL/TP
             for sym, pos in list(self._portfolio.open_positions.items()):
                 curr_bar_obj = _row_to_bar(ts_dt, row, sym, primary_tf)
@@ -245,11 +252,12 @@ class BacktestEngine:
             else:
                 exit_price = pos.stop_loss
 
+            close_side = "sell" if pos.side == "long" else "buy"
             fee = exit_price * pos.qty_filled * self._bcfg.fee_schedule.taker
             fill = FillEvent(
                 order_id=f"exit_{sym}_{ts.timestamp():.0f}",
                 symbol=sym,
-                side="sell" if pos.side == "long" else "buy",
+                side=close_side,
                 qty_filled=pos.qty_filled,
                 avg_price=exit_price,
                 fee_paid=fee,
@@ -257,6 +265,8 @@ class BacktestEngine:
                 strategy_id=pos.strategy_id,
             )
             self._portfolio.close_position(fill)
+            # Keep broker cash in sync so subsequent fills are not rejected
+            self._broker.sync_cash_on_close(close_side, pos.qty_filled, exit_price, fee)
 
     def _generate_report(self) -> dict:
         trades = self._portfolio.tracker.closed_trades

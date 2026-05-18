@@ -18,8 +18,9 @@ class RiskConfig(BaseModel):
     min_r_after_fees: float = Field(ge=1.0, default=1.5)
     risk_mode: Literal["defensive", "normal", "aggressive"] = "normal"
     execution_mode: Literal["backtest", "paper", "live"] = "paper"
-    losing_streak_defensive: int = Field(ge=1, default=3)
-    losing_streak_halt: int = Field(ge=1, default=6)
+    losing_streak_defensive: int = Field(ge=1, default=5)
+    losing_streak_halt: int = Field(ge=1, default=10)
+    losing_streak_halt_reset_bars: int = Field(ge=0, default=50)
     max_crypto_exposure_pct: float = Field(gt=0, le=1.0, default=0.60)
     max_stock_exposure_pct: float = Field(gt=0, le=1.0, default=0.40)
     stale_order_timeout_minutes: int = Field(ge=1, default=30)

@@ -172,6 +172,13 @@ class PaperBroker(AbstractBroker):
             await cb(fill)
         return fill
 
+    def sync_cash_on_close(self, side: str, qty: float, exit_price: float, fee_paid: float) -> None:
+        """Update internal cash when a position is closed externally (e.g., SL/TP in backtest)."""
+        if side == "sell":   # closing a long: receive proceeds
+            self._cash += qty * exit_price - fee_paid
+        else:                 # closing a short: pay to buy back
+            self._cash -= qty * exit_price + fee_paid
+
     async def sync_positions(self) -> list[dict]:
         return []
 
