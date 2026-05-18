@@ -40,9 +40,18 @@ _STRATEGY_MAP = {
 
 
 def _resample_tf(df_1h: pd.DataFrame, target_tf: str) -> pd.DataFrame:
-    """Resample 1h OHLCV data to a coarser timeframe."""
-    rule_map = {"4h": "4h", "1D": "1D", "1d": "1D"}
-    rule = rule_map.get(target_tf, target_tf.upper())
+    """Resample 1h OHLCV data to a coarser timeframe.
+
+    Only coarser-than-1h timeframes are supported.  Sub-hourly TFs
+    (5m, 15m, etc.) cannot be derived from 1h data and raise ValueError.
+    """
+    rule_map = {"4h": "4h", "4H": "4h", "1D": "1D", "1d": "1D"}
+    rule = rule_map.get(target_tf)
+    if rule is None:
+        raise ValueError(
+            f"Cannot resample 1h data to {target_tf!r}. "
+            "Only '4h'/'4H' and '1D'/'1d' are supported."
+        )
     return df_1h.resample(rule).agg(
         {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
     ).dropna()
@@ -95,8 +104,10 @@ def load_bars_for_symbol(
 
     bars = {primary_tf: df_primary}
 
-    # Load every required secondary TF from the 1h source
-    needed = set(extra_tfs or []) | {"1D"}  # always include daily for trend filter
+    # Load every required secondary TF from the 1h source.
+    # Sub-hourly TFs (5m, 15m) cannot be derived from 1h data — skip them.
+    coarser_tfs = {"1h", "1H", "4h", "4H", "1D", "1d"}
+    needed = (set(extra_tfs or []) | {"1D"}) & coarser_tfs
     needed.discard(primary_tf)
     if needed:
         df_1h = _load_1h()
