@@ -2,19 +2,13 @@ strategy_id: momentum_sniper
 strategy_class: bot.strategies.momentum_sniper.MomentumSniperStrategy
 
 symbols:
-  # High-volatility explosive movers: these are the only coins that suit a
-  # momentum-sniper approach on 15m. Stable majors (BNB/SOL/ADA/MATIC/DOT)
-  # consistently lose here because their 15m moves lack the sudden spike+surge
-  # profile the strategy requires.
-  - ETHUSDT        # +168.8% in 6mo backtest — strong 15m momentum
-  - XRPUSDT        # +130.0% — explosive short-term moves
-  - ARBUSDT        # +86.3%  — L2 narratives → quick pumps
-  - OPUSDT         # marginal but positive, L2 correlation with ARB
-  - DOGEUSDT       # high retail volume → momentum bursts
-  - PEPEUSDT       # meme liquidity → 100-500% swings (add 15m data when available)
-  - WIFUSDT        # meme coin — same profile as PEPE
-  - RENDERUSDT     # AI narrative pumps
-  - TIAUSDT        # mid-cap with strong momentum swings
+  # Validated profitable pairs (backtested Jul–Dec 2024, with Brain+floor fix):
+  # XRP +134.5%, ARB +76.4%, OP -2.4% — focus on the L2/XRP momentum profiles.
+  # ETH (-12.3%, 5% WR) and DOGE (-25.2%, 9% WR) removed: insufficient WR for R:R.
+  # PEPE/WIF/RENDER/TIA: add when real 15m OHLCV data is available.
+  - XRPUSDT        # +134.5% — explosive narrative-driven moves
+  - ARBUSDT        # +76.4%  — L2 pumps, high 15m momentum frequency
+  - OPUSDT         # -2.4%   — borderline; kept for ARB/OP L2 correlation diversity
 
 timeframes:
   signal: "15m"
