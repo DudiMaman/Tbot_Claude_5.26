@@ -12,3 +12,4 @@ data/synthetic/
 data_cache/
 logs/
 KILL_SWITCH
+reports/
