@@ -58,8 +58,9 @@ class PortfolioManager:
         if side == "long":
             self._cash -= fill.qty_filled * fill.avg_price + fill.fee_paid
         else:
-            # Short open: we receive proceeds from selling
-            self._cash += fill.qty_filled * fill.avg_price - fill.fee_paid
+            # Short open: proceeds are held as margin collateral, not spendable cash.
+            # Only deduct the fee so unrealized PnL = (entry - current) × qty is correct.
+            self._cash -= fill.fee_paid
         logger.info(
             "position_opened",
             symbol=fill.symbol,
@@ -80,8 +81,9 @@ class PortfolioManager:
             # Sell to close long: receive proceeds
             self._cash += fill.qty_filled * fill.avg_price - fill.fee_paid
         else:
-            # Buy to close short: pay to buy back
-            self._cash -= fill.qty_filled * fill.avg_price + fill.fee_paid
+            # Close short: credit net PnL = (entry - exit) × qty − exit_fee
+            # (entry_fee was already deducted on open)
+            self._cash += (pos.entry_price - fill.avg_price) * pos.qty_filled - fill.fee_paid
         pos.close(fill.avg_price, fill.fee_paid, fill.timestamp)
         summary = self._tracker.record_close(pos)
         logger.info(
@@ -116,13 +118,16 @@ class PortfolioManager:
 
     def equity(self, prices: dict[str, float] | None = None) -> float:
         unrealized = 0.0
-        if prices:
-            for sym, pos in self._positions.items():
-                price = prices.get(sym, pos.entry_price)
-                if pos.side == "long":
-                    unrealized += (price - pos.entry_price) * pos.qty_filled
-                else:
-                    unrealized += (pos.entry_price - price) * pos.qty_filled
+        for sym, pos in self._positions.items():
+            # Always account for open positions even without live prices.
+            price = (prices or {}).get(sym, pos.entry_price)
+            if pos.side == "long":
+                # Long: asset appreciated/depreciated relative to entry
+                unrealized += (price - pos.entry_price) * pos.qty_filled
+            else:
+                # Short: cash was credited with entry×qty on open; subtract current liability
+                # Net contribution = entry×qty (in cash) − current×qty (liability) = (entry−current)×qty
+                unrealized += (pos.entry_price - price) * pos.qty_filled
         return self._cash + unrealized
 
     def open_position_count(self) -> int:

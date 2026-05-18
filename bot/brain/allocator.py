@@ -161,14 +161,16 @@ class StrategyAllocator:
         # RANGING: 3% — mean reversion exits quickly.
         # LOW_VOL: 2% — tight trailing in quiet markets.
         if strategy_id != "mean_reversion":  # mean reversion uses fixed TP, not trailing
-            if regime in (MarketRegime.TRENDING_UP, MarketRegime.TRENDING_DOWN):
-                overrides["trailing_stop_pct"] = 0.10
+            if regime == MarketRegime.TRENDING_UP:
+                overrides["trailing_stop_pct"] = 0.20   # 20%: survive 20% corrections in 300%+ bull runs
+            elif regime == MarketRegime.TRENDING_DOWN:
+                overrides["trailing_stop_pct"] = 0.15   # 15%: short-side bounces are violent
             elif regime == MarketRegime.HIGH_VOL:
-                overrides["trailing_stop_pct"] = 0.08
+                overrides["trailing_stop_pct"] = 0.12
             elif regime == MarketRegime.RANGING:
-                overrides["trailing_stop_pct"] = 0.03
+                overrides["trailing_stop_pct"] = 0.05
             elif regime == MarketRegime.LOW_VOL:
-                overrides["trailing_stop_pct"] = 0.02
+                overrides["trailing_stop_pct"] = 0.04
 
         # Mean reversion RSI thresholds adapt to vol regime
         if strategy_id == "mean_reversion":

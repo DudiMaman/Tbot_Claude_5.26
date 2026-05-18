@@ -70,7 +70,8 @@ class MeanReversionStrategy(BaseStrategy):
             if daily_uptrend is False:  # skip longs in confirmed downtrend
                 return None
             stop_loss = entry - self._atr_multiplier * atr_val
-            take_profit = float(curr["bb_mid"])
+            # TP at upper band = full band width, giving ~2-3R:R in most setups
+            take_profit = float(curr["bb_upper"])
             if stop_loss <= 0 or take_profit <= entry:
                 return None
             return Signal(
@@ -90,7 +91,8 @@ class MeanReversionStrategy(BaseStrategy):
             if daily_uptrend is True:  # skip shorts in confirmed uptrend
                 return None
             stop_loss = entry + self._atr_multiplier * atr_val
-            take_profit = float(curr["bb_mid"])
+            # TP at lower band = full band width for short
+            take_profit = float(curr["bb_lower"])
             if take_profit <= 0 or take_profit >= entry:
                 return None
             return Signal(

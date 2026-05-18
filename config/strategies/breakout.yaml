@@ -23,16 +23,16 @@ timeframes:
   trend: "1D"
 
 # Indicator params
-lookback_bars: 10             # shorter lookback = more breakout levels identified
-confirmation_bars: 1
-volume_surge_multiplier: 1.3
-atr_min_break: 0.15
+lookback_bars: 20             # longer lookback = fewer but stronger breakout levels
+confirmation_bars: 2          # 2 bars above resistance = much more reliable
+volume_surge_multiplier: 1.5  # stronger volume requirement
+atr_min_break: 0.5            # break must be 0.5×ATR above resistance (was 0.15)
 atr_stop_multiplier: 2.0
 
 # Trade params — NO fixed TP. Breakouts in bull markets run for weeks/months.
 # Let the trailing stop decide when the breakout is exhausted.
 take_profit_r: 999.0
-trailing_stop_pct: 0.08      # 8% trailing — breakout pullbacks are violent
-                              # Brain overrides to 10% in TRENDING_UP regime
+trailing_stop_pct: 0.15      # 15% trailing — survives volatile crypto corrections
+                              # Brain overrides to 20% in TRENDING_UP regime
 
 warmup_bars: 25

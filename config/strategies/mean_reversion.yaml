@@ -16,19 +16,19 @@ symbols:
   - LTCUSDT
 
 timeframes:
-  signal: "15m"      # was 1h
+  signal: "1h"       # 1h gives cleaner bounces; 15m too noisy with bar-shift fill delay
   trend: "1D"
 
 # Indicator params
 rsi_period: 14
-rsi_oversold: 30           # lowered from 28 to generate more signals
-rsi_overbought: 70         # lowered from 72
+rsi_oversold: 32           # slightly looser = more longs during shallow dips
+rsi_overbought: 68         # slightly looser = more shorts during shallow rallies
 bb_period: 20
-bb_std: 1.8                # tighter bands = more touches = more signals (was 2.0)
+bb_std: 2.0                # standard bands; TP at upper/lower band gives ~2-3R:R
 
-# Trade params
-take_profit_r: 2.5         # TP at 2.5R → profitable at 40% WR
-atr_multiplier: 1.8        # slightly tighter stop; mean reversion snaps back quickly
-trailing_stop_pct: null    # no trailing stop for mean reversion
+# Trade params — TP now uses BB upper/lower (full band width), not BB mid
+take_profit_r: 2.5         # reference only; strategy uses BB upper/lower as TP
+atr_multiplier: 1.5        # 1.5×ATR stop gives clean R:R with BB-width TP
+trailing_stop_pct: null    # no trailing stop; mean reversion targets the band
 
 warmup_bars: 30

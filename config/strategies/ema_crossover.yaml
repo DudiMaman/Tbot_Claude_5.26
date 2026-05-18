@@ -22,7 +22,7 @@ symbols:
   - WIFUSDT
 
 timeframes:
-  signal: "15m"
+  signal: "1h"     # 1h for 2-year backtests; switch to 15m for live trading with 15m feed
   entry: "5m"
   trend: "1D"
 

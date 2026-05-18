@@ -129,7 +129,11 @@ class BacktestEngine:
 
                     context_bars: dict[str, pd.DataFrame] = {}
                     for tf, df in bars_by_tf.items():
-                        context_bars[tf] = df.iloc[: i + 1].copy()
+                        if tf == primary_tf:
+                            context_bars[tf] = df.iloc[: i + 1].copy()
+                        else:
+                            # Timestamp-aligned slice: no lookahead across timeframes
+                            context_bars[tf] = df[df.index <= ts].copy()
 
                     context = StrategyContext(
                         symbol=sym,

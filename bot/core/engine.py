@@ -169,15 +169,23 @@ class TradingEngine:
             sys.exit(1)
 
         self._tf_manager.update(bar)
-        self._equity_curve.record(self._clock.now(), self._portfolio.equity())
 
-        # Update trailing stops then check if stop/TP was hit this bar
-        self._portfolio.update_on_bar(bar)
-        if isinstance(self._broker, PaperBroker):
-            await self._check_paper_stops(bar)
+        # Trailing stop updates and paper-SL/TP checks only on the signal timeframe.
+        # Trend (1D) bars must NOT update stops — they run at a different pace and
+        # would create phantom price levels far from the actual execution timeframe.
+        is_signal_tf = any(
+            bar.timeframe == s.config.timeframes.get("signal", "1h")
+            for s in self._strategies
+            if bar.symbol in s.config.symbols
+        )
+        if is_signal_tf:
+            self._equity_curve.record(self._clock.now(), self._portfolio.equity())
+            self._portfolio.update_on_bar(bar)
+            if isinstance(self._broker, PaperBroker):
+                await self._check_paper_stops(bar)
 
-        # Process other pending orders from paper broker
-        if isinstance(self._broker, PaperBroker):
+        # Process pending order fills on signal TF bars only
+        if is_signal_tf and isinstance(self._broker, PaperBroker):
             await self._broker.on_bar(bar)
 
         # Update metrics
