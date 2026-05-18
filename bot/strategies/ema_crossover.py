@@ -22,6 +22,7 @@ class EMACrossoverStrategy(BaseStrategy):
         self._ema_slow: int = int(config.model_extra.get("ema_slow", 21))
         self._adx_period: int = int(config.model_extra.get("adx_period", 14))
         self._adx_threshold: float = float(config.model_extra.get("adx_threshold", 25.0))
+        self._atr_multiplier: float = float(config.model_extra.get("atr_multiplier", 2.0))
 
     def _init_symbol_state(self):
         return {"bar_count": 0}
@@ -65,13 +66,14 @@ class EMACrossoverStrategy(BaseStrategy):
         if pd.isna(atr_val) or atr_val <= 0:
             atr_val = entry * 0.01
 
+        risk_dist = self._atr_multiplier * atr_val
         if bullish_cross:
-            stop_loss = entry - 1.5 * atr_val
-            take_profit = entry + self.config.take_profit_r * 1.5 * atr_val
+            stop_loss = entry - risk_dist
+            take_profit = entry + self.config.take_profit_r * risk_dist
             direction = "long"
         else:
-            stop_loss = entry + 1.5 * atr_val
-            take_profit = entry - self.config.take_profit_r * 1.5 * atr_val
+            stop_loss = entry + risk_dist
+            take_profit = entry - self.config.take_profit_r * risk_dist
             direction = "short"
 
         if stop_loss <= 0 or take_profit <= 0:

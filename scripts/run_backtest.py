@@ -77,6 +77,27 @@ async def main() -> None:
         df = pd.read_parquet(args.data_file)
         if df.index.tz is None:
             df.index = df.index.tz_localize("UTC")
+
+        # Auto-resample if the file's actual resolution differs from the requested timeframe.
+        # Infer actual resolution from median bar gap.
+        _RESAMPLE_RULE = {
+            "1m": "1min", "5m": "5min", "15m": "15min", "30m": "30min",
+            "1h": "1h", "4h": "4h", "1D": "1D",
+        }
+        _TF_HOURS = {
+            "1m": 1/60, "5m": 5/60, "15m": 0.25, "30m": 0.5,
+            "1h": 1, "4h": 4, "1D": 24,
+        }
+        if len(df) >= 2:
+            median_gap_h = (df.index[1:] - df.index[:-1]).median().total_seconds() / 3600
+            target_h = _TF_HOURS.get(args.timeframe, 1.0)
+            if abs(target_h - median_gap_h) > 0.1 * target_h:
+                rule = _RESAMPLE_RULE.get(args.timeframe, args.timeframe)
+                df = df.resample(rule).agg(
+                    {"open": "first", "high": "max", "low": "min",
+                     "close": "last", "volume": "sum"}
+                ).dropna()
+                print(f"Resampled to {args.timeframe}: {len(df)} bars")
     else:
         loader = HistoricalLoader()
         print(f"Fetching {args.symbol} {args.timeframe} data {start} → {end}...")

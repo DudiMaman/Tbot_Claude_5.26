@@ -161,19 +161,20 @@ class BacktestEngine:
         await self._broker.place_order(order_event)
 
     async def _on_fill(self, fill: FillEvent) -> None:
-        # Find matching pending signal
+        # Find matching pending signal (works for both long and short opens)
         matched_signal = None
         for sig, qty in self._pending_signals:
             if sig.symbol == fill.symbol and sig.strategy_id == fill.strategy_id:
                 matched_signal = sig
                 break
-        if matched_signal and fill.side == "buy":
+        if matched_signal:
+            _adjust_signal_for_gap(matched_signal, fill.avg_price)
             self._portfolio.open_position(fill, matched_signal)
             self._pending_signals = [
                 (s, q) for s, q in self._pending_signals
                 if not (s.symbol == fill.symbol and s.strategy_id == fill.strategy_id)
             ]
-        elif fill.side == "sell":
+        else:
             self._portfolio.close_position(fill)
 
     async def _process_fill(self, fill: FillEvent, symbol: str) -> None:
@@ -234,6 +235,16 @@ def _row_to_bar(ts: datetime, row: pd.Series, symbol: str, tf: str, source: str 
         volume=float(row.get("volume", 0)),
         source=source,
     )
+
+
+def _adjust_signal_for_gap(signal: "Signal", fill_price: float) -> None:
+    """Shift SL/TP so they stay on the correct side of the actual fill price."""
+    if signal.entry_price <= 0:
+        return
+    gap = fill_price - signal.entry_price
+    signal.stop_loss += gap
+    signal.take_profit += gap
+    signal.entry_price = fill_price
 
 
 def _df_to_bars(df: pd.DataFrame, symbol: str, tf: str) -> list[OHLCVBar]:

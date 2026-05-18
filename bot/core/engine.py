@@ -233,11 +233,14 @@ class TradingEngine:
         idem_key = fill.idempotency_key
         pending = self._pending_signals.get(idem_key)
 
-        if fill.side == "buy" and pending:
+        if pending:
+            # Opening fill — works for both long (buy) and short (sell)
             signal, _ = pending
+            _adjust_signal_for_gap(signal, fill.avg_price)
             self._portfolio.open_position(fill, signal)
             del self._pending_signals[idem_key]
-        elif fill.side == "sell":
+        else:
+            # Closing fill — stop/TP auto-close or manual close
             self._portfolio.close_position(fill)
 
         # Notify strategy
@@ -390,3 +393,19 @@ class TradingEngine:
 
     def stop(self) -> None:
         self._running = False
+
+
+def _adjust_signal_for_gap(signal: "Signal", fill_price: float) -> None:
+    """Shift SL/TP by the fill-price gap so they stay on the correct side.
+
+    Signals set SL/TP relative to the signal bar's close.  When the fill
+    price (next-bar open) differs due to a gap, SL or TP can land on the
+    wrong side of the actual entry, causing an instant stop-out.  Shifting
+    both levels by the same gap preserves the risk distance.
+    """
+    if signal.entry_price <= 0:
+        return
+    gap = fill_price - signal.entry_price
+    signal.stop_loss += gap
+    signal.take_profit += gap
+    signal.entry_price = fill_price

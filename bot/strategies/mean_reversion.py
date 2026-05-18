@@ -12,7 +12,7 @@ import pandas as pd
 from bot.core.events import Signal
 from bot.core.config import StrategyConfig
 from bot.strategies.base import BaseStrategy, StrategyContext
-from bot.utils.indicators import atr as calc_atr, bollinger_bands, rsi as calc_rsi
+from bot.utils.indicators import atr as calc_atr, bollinger_bands, ema as calc_ema, rsi as calc_rsi
 
 
 class MeanReversionStrategy(BaseStrategy):
@@ -23,6 +23,7 @@ class MeanReversionStrategy(BaseStrategy):
         self._rsi_overbought: float = float(config.model_extra.get("rsi_overbought", 70))
         self._bb_period: int = int(config.model_extra.get("bb_period", 20))
         self._bb_std: float = float(config.model_extra.get("bb_std", 2.0))
+        self._atr_multiplier: float = float(config.model_extra.get("atr_multiplier", 2.0))
 
     def on_bar(self, context: StrategyContext) -> Optional[Signal]:
         symbol = context.symbol
@@ -52,13 +53,23 @@ class MeanReversionStrategy(BaseStrategy):
         if pd.isna(curr.get("rsi")) or pd.isna(curr.get("bb_lower")):
             return None
 
+        # 1D trend filter: only trade in the direction of the daily trend
+        trend_tf = self.config.timeframes.get("trend", "1D")
+        trend_df = context.bars.get(trend_tf)
+        daily_uptrend: bool | None = None
+        if trend_df is not None and len(trend_df) >= 50:
+            ema50 = calc_ema(trend_df["close"], 50).iloc[-1]
+            daily_uptrend = float(trend_df["close"].iloc[-1]) > float(ema50)
+
         entry = context.current_bar.close
         atr_val = curr.get("atr", entry * 0.01)
         if pd.isna(atr_val) or atr_val <= 0:
             atr_val = entry * 0.01
 
         if curr["rsi"] < self._rsi_oversold and entry <= float(curr["bb_lower"]) * 1.005:
-            stop_loss = entry - 1.5 * atr_val
+            if daily_uptrend is False:  # skip longs in confirmed downtrend
+                return None
+            stop_loss = entry - self._atr_multiplier * atr_val
             take_profit = float(curr["bb_mid"])
             if stop_loss <= 0 or take_profit <= entry:
                 return None
@@ -76,7 +87,9 @@ class MeanReversionStrategy(BaseStrategy):
             )
 
         if curr["rsi"] > self._rsi_overbought and entry >= float(curr["bb_upper"]) * 0.995:
-            stop_loss = entry + 1.5 * atr_val
+            if daily_uptrend is True:  # skip shorts in confirmed uptrend
+                return None
+            stop_loss = entry + self._atr_multiplier * atr_val
             take_profit = float(curr["bb_mid"])
             if take_profit <= 0 or take_profit >= entry:
                 return None

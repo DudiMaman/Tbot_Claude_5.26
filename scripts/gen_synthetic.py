@@ -17,9 +17,9 @@ def generate_ohlcv(
     end: str,
     timeframe: str = "1h",
     initial_price: float = 16500.0,
-    annual_drift: float = 0.80,       # ~80% annual return (crypto-like)
-    annual_vol: float = 0.75,         # ~75% annualised volatility
-    seed: int = 42,
+    annual_drift: float = 1.50,       # calibrated to match BTC 2023-2024 (~330% over 2 years)
+    annual_vol: float = 0.75,         # ~75% annualised volatility (historical BTC)
+    seed: int = 137,                  # seed that produces a representative bull run
 ) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
 
@@ -69,16 +69,28 @@ def main() -> None:
     parser.add_argument("--timeframe", default="1h")
     parser.add_argument("--symbol", default="BTCUSDT")
     parser.add_argument("--output", default="data/synthetic")
+    parser.add_argument("--initial-price", type=float, default=16500.0)
+    parser.add_argument("--annual-drift", type=float, default=1.50,
+                        help="Annual log-return drift (1.50 = 150%% ≈ 2023-2024 BTC bull)")
+    parser.add_argument("--annual-vol", type=float, default=0.75)
+    parser.add_argument("--seed", type=int, default=137)
     args = parser.parse_args()
 
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
 
-    df = generate_ohlcv(args.start, args.end, args.timeframe)
+    df = generate_ohlcv(
+        args.start, args.end, args.timeframe,
+        initial_price=args.initial_price,
+        annual_drift=args.annual_drift,
+        annual_vol=args.annual_vol,
+        seed=args.seed,
+    )
     path = out / f"{args.symbol}_{args.timeframe}_{args.start}_{args.end}.parquet"
     df.to_parquet(path)
     print(f"Generated {len(df)} bars → {path}")
     print(f"Price range: ${df['close'].min():.0f} – ${df['close'].max():.0f}")
+    print(f"Start: ${df['close'].iloc[0]:.0f}  →  End: ${df['close'].iloc[-1]:.0f}")
 
 
 if __name__ == "__main__":

@@ -38,9 +38,10 @@ class PortfolioManager:
         if fill.idempotency_key:
             self._idempotency_keys.add(fill.idempotency_key)
 
+        side = "long" if fill.side == "buy" else "short"
         pos = Position(
             symbol=fill.symbol,
-            side="long" if fill.side == "buy" else "short",
+            side=side,
             entry_price=fill.avg_price,
             qty=fill.qty_filled,
             qty_filled=fill.qty_filled,
@@ -49,12 +50,16 @@ class PortfolioManager:
             strategy_id=signal.strategy_id,
             idempotency_key=fill.idempotency_key,
             opened_at=fill.timestamp,
-            trailing_stop_pct=None,   # set by strategy config if needed
+            trailing_stop_pct=None,
             trailing_stop_high=fill.avg_price,
             fees_paid_entry=fill.fee_paid,
         )
         self._positions[fill.symbol] = pos
-        self._cash -= fill.qty_filled * fill.avg_price + fill.fee_paid
+        if side == "long":
+            self._cash -= fill.qty_filled * fill.avg_price + fill.fee_paid
+        else:
+            # Short open: we receive proceeds from selling
+            self._cash += fill.qty_filled * fill.avg_price - fill.fee_paid
         logger.info(
             "position_opened",
             symbol=fill.symbol,
@@ -71,8 +76,12 @@ class PortfolioManager:
         if pos is None:
             return None
 
-        proceeds = fill.qty_filled * fill.avg_price - fill.fee_paid
-        self._cash += proceeds
+        if pos.side == "long":
+            # Sell to close long: receive proceeds
+            self._cash += fill.qty_filled * fill.avg_price - fill.fee_paid
+        else:
+            # Buy to close short: pay to buy back
+            self._cash -= fill.qty_filled * fill.avg_price + fill.fee_paid
         pos.close(fill.avg_price, fill.fee_paid, fill.timestamp)
         summary = self._tracker.record_close(pos)
         logger.info(

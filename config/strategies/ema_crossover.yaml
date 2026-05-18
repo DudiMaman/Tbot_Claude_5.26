@@ -17,8 +17,9 @@ adx_period: 14
 adx_threshold: 25.0  # only trade when ADX > 25 (trending market)
 
 # Trade params
-take_profit_r: 2.0   # TP at 2R
-trailing_stop_pct: 0.015   # 1.5% trailing stop once in profit
+take_profit_r: 2.0        # TP at 2R
+atr_multiplier: 2.0       # stop distance = 2× ATR (was 1.5×; wider avoids same-bar stop-outs)
+trailing_stop_pct: 0.015  # 1.5% trailing stop once in profit
 
 # Warm-up bars required before generating signals
 warmup_bars: 50
