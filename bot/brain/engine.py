@@ -67,6 +67,13 @@ class BrainEngine:
         self._current_regime: MarketRegime = MarketRegime.UNKNOWN
         self._bar_count: int = 0
 
+        # Snapshot initial config values — Brain may only widen trailing stops,
+        # never narrow them below the strategy's configured floor.
+        self._initial_trailing_stops: dict[str, float] = {
+            sid: float(getattr(s, "_trailing_stop_pct", 0.0) or 0.0)
+            for sid, s in self._strategies.items()
+        }
+
     # ------------------------------------------------------------------
     # Public interface — called by engine on every primary bar
     # ------------------------------------------------------------------
@@ -212,6 +219,12 @@ class BrainEngine:
             current_val = getattr(strategy, attr, None)
             if current_val is None:
                 continue
+            # Never narrow trailing_stop_pct below the strategy's configured floor.
+            # The Brain may widen stops to ride big moves but must not tighten
+            # them past the minimum the user set (e.g. 10% for momentum_sniper).
+            if param == "trailing_stop_pct":
+                floor = self._initial_trailing_stops.get(sid, 0.0)
+                new_val = max(float(new_val), floor)
             if abs(float(current_val) - float(new_val)) < 1e-9:
                 continue
             setattr(strategy, attr, type(current_val)(new_val))

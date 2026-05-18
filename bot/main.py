@@ -22,9 +22,11 @@ from bot.core.modes import ExecutionMode
 from bot.execution.binance import BinanceBroker
 from bot.execution.paper import PaperBroker
 from bot.reporting.logger import configure_logging
+from bot.data.feed_synthetic_live import SyntheticLiveFeed
 from bot.strategies.ema_crossover import EMACrossoverStrategy
 from bot.strategies.mean_reversion import MeanReversionStrategy
 from bot.strategies.breakout import BreakoutStrategy
+from bot.strategies.momentum_sniper import MomentumSniperStrategy
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,7 +39,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--strategies", nargs="+",
         default=["ema_crossover"],
-        choices=["ema_crossover", "mean_reversion", "breakout"],
+        choices=["ema_crossover", "mean_reversion", "breakout", "momentum_sniper"],
+    )
+    parser.add_argument(
+        "--synthetic-feed", action="store_true",
+        help="Use synthetic GBM price feed instead of Binance WebSocket (for testing/demo)",
     )
     parser.add_argument("--log-level", default=os.environ.get("LOG_LEVEL", "INFO"))
     parser.add_argument("--prometheus-port", type=int, default=8000)
@@ -51,6 +57,7 @@ def build_strategies(names: list[str], config_dir: str) -> list:
         "ema_crossover": EMACrossoverStrategy,
         "mean_reversion": MeanReversionStrategy,
         "breakout": BreakoutStrategy,
+        "momentum_sniper": MomentumSniperStrategy,
     }
     strategies = []
     for name in names:
@@ -58,6 +65,39 @@ def build_strategies(names: list[str], config_dir: str) -> list:
         cls = strategy_map[name]
         strategies.append(cls(cfg))
     return strategies
+
+
+def _load_warmup_data(strategies: list, data_dir: str = "data/real_synthetic") -> dict:
+    """Load most-recent historical Parquet files for each strategy symbol/timeframe.
+    Used to pre-warm indicator buffers so strategies trade from bar 1 of live feed.
+    Returns {symbol → {timeframe → DataFrame}} or empty dict if no data found.
+    """
+    import pandas as pd
+    from pathlib import Path
+
+    warmup: dict[str, dict[str, pd.DataFrame]] = {}
+    data_path = Path(data_dir)
+    if not data_path.exists():
+        return warmup
+
+    for strategy in strategies:
+        for symbol in strategy.config.symbols:
+            for tf in strategy.config.timeframes.values():
+                if tf in warmup.get(symbol, {}):
+                    continue  # already loaded
+                # Try both original case and lowercase (1D vs 1d)
+                for tf_variant in {tf, tf.lower()}:
+                    candidates = sorted(
+                        data_path.glob(f"{symbol}_{tf_variant}_*.parquet"), reverse=True
+                    )
+                    if candidates:
+                        try:
+                            df = pd.read_parquet(candidates[0])
+                            warmup.setdefault(symbol, {})[tf] = df
+                        except Exception:
+                            pass
+                        break
+    return warmup
 
 
 async def run_paper_or_live(args: argparse.Namespace) -> None:
@@ -71,6 +111,14 @@ async def run_paper_or_live(args: argparse.Namespace) -> None:
     else:
         broker = PaperBroker(broker_cfg, initial_cash=risk_cfg.capital_usd)
 
+    data_feed = SyntheticLiveFeed(bar_seconds=5) if args.synthetic_feed else None
+
+    # Pre-warm indicators from cached Parquet data so strategies are ready immediately
+    warmup_data = _load_warmup_data(strategies)
+    if warmup_data:
+        warmed = {sym: list(tfs.keys()) for sym, tfs in warmup_data.items()}
+        print(f"Pre-warming indicators from historical data: {warmed}")
+
     engine = TradingEngine(
         risk_config=risk_cfg,
         broker_config=broker_cfg,
@@ -79,6 +127,8 @@ async def run_paper_or_live(args: argparse.Namespace) -> None:
         execution_mode=mode,
         prometheus_port=args.prometheus_port,
         status_interval_seconds=args.status_interval,
+        data_feed=data_feed,
+        warmup_data=warmup_data or None,
     )
 
     await engine.run()

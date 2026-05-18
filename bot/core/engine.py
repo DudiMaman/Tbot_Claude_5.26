@@ -51,6 +51,7 @@ class TradingEngine:
         enable_brain: bool = True,
         brain_interval_bars: int = 50,
         brain_state_path: str = "reports/brain_state.json",
+        warmup_data: Optional[dict[str, dict[str, "pd.DataFrame"]]] = None,
     ) -> None:
         self._rcfg = risk_config
         self._bcfg = broker_config
@@ -83,6 +84,7 @@ class TradingEngine:
         self._status_interval = status_interval_seconds
         self._data_feed: Optional[AbstractDataFeed] = data_feed
         self._background_tasks: list[asyncio.Task] = []
+        self._warmup_data = warmup_data  # {symbol → {tf → DataFrame}} for pre-warming indicators
 
         if isinstance(broker, PaperBroker):
             broker.register_fill_callback(self._on_fill)
@@ -122,6 +124,11 @@ class TradingEngine:
         # Sync positions on startup (handles container restart mid-trade)
         await self._sync_positions_on_startup()
 
+        # Pre-warm indicator buffers from historical data so strategies
+        # don't trade blind for the first 50+ bars after startup.
+        if self._warmup_data:
+            self._pre_warm_from_data(self._warmup_data)
+
         self._background_tasks = [
             asyncio.create_task(self._stale_order_monitor()),
             asyncio.create_task(self._daily_reset_loop()),
@@ -152,6 +159,39 @@ class TradingEngine:
             self._background_tasks.clear()
             await self._broker.stop()
             logger.info("engine_stopped")
+
+    def _pre_warm_from_data(
+        self,
+        warmup_data: "dict[str, dict[str, pd.DataFrame]]",
+    ) -> None:
+        """Pre-fill TimeframeManager buffers from historical DataFrames.
+
+        warmup_data: {symbol → {timeframe → DataFrame (timestamp index)}}
+        Called once at startup so indicators (EMA50, ATR, etc.) are ready
+        before the first live bar arrives.
+        """
+        import pandas as pd  # local import keeps top-level clean
+        total_bars = 0
+        for symbol, tf_map in warmup_data.items():
+            for tf, df in tf_map.items():
+                bars: list[OHLCVBar] = []
+                for ts, row in df.iterrows():
+                    ts_dt = ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+                    bars.append(OHLCVBar(
+                        symbol=symbol,
+                        timeframe=tf,
+                        timestamp=ts_dt,
+                        open=float(row["open"]),
+                        high=float(row["high"]),
+                        low=float(row["low"]),
+                        close=float(row["close"]),
+                        volume=float(row["volume"]),
+                        source="warmup",
+                    ))
+                if bars:
+                    self._tf_manager.pre_warm(symbol, tf, bars)
+                    total_bars += len(bars)
+        logger.info("indicator_warmup_complete", total_bars=total_bars, symbols=list(warmup_data))
 
     async def _consume_feed(self, symbol: str, timeframe: str) -> None:
         if self._data_feed is not None:
