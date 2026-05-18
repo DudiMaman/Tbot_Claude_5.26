@@ -14,22 +14,29 @@ symbols:
   - DOTUSDT
   - XRPUSDT
   - LTCUSDT
+  - INJUSDT
+  - ARBUSDT
+  - OPUSDT
+  - RENDERUSDT
+  - TIAUSDT
+  - WIFUSDT
 
 timeframes:
-  signal: "15m"      # trend + signal generation (was 1h)
-  entry: "5m"        # entry timing (was 15m)
-  trend: "1D"        # higher timeframe trend filter
+  signal: "15m"
+  entry: "5m"
+  trend: "1D"
 
 # Indicator params
 ema_fast: 9
 ema_slow: 21
 adx_period: 14
-adx_threshold: 22.0  # lowered from 27.0 to generate more signals
+adx_threshold: 20.0   # low threshold = catch trends early
 
-# Trade params
-take_profit_r: 2.5        # lowered from 3.0 for faster exits and more trades
-atr_multiplier: 2.0       # stop distance = 2× ATR
-trailing_stop_pct: 0.02   # 2% trailing stop to capture extended trend moves
+# Trade params — NO fixed TP. Trailing stop rides the full trend.
+# A coin going 300% should return 250%+, not exit at 2.5R.
+take_profit_r: 999.0      # effectively disabled — trailing stop decides exit
+atr_multiplier: 2.0       # stop distance = 2× ATR from entry
+trailing_stop_pct: 0.07   # 7% trailing — survives normal pullbacks in a bull run
+                           # Brain overrides to 10% in TRENDING_UP regime
 
-# Warm-up bars required before generating signals
 warmup_bars: 50

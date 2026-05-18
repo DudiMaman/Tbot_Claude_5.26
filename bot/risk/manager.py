@@ -79,7 +79,8 @@ class RiskManager:
         # 5. Compute quantity — use per-strategy override if Brain has set one
         effective_mode = self._strategy_risk_modes.get(signal.strategy_id, self._risk_mode)
         qty, sizing_err = self._sizer.compute_qty(
-            signal, capital, effective_mode, step_size
+            signal, capital, effective_mode, step_size,
+            available_cash=self._portfolio.cash,
         )
         if sizing_err:
             return self._reject(signal, sizing_err, now)

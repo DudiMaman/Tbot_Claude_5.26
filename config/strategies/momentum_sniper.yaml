@@ -14,6 +14,13 @@ symbols:
   - DOTUSDT
   - XRPUSDT
   - LTCUSDT
+  - INJUSDT
+  - ARBUSDT
+  - OPUSDT
+  - RENDERUSDT
+  - TIAUSDT
+  - WIFUSDT
+  - PEPEUSDT
 
 timeframes:
   signal: "15m"
@@ -23,14 +30,16 @@ timeframes:
 lookback_bars: 10
 volume_surge_multiplier: 2.0
 rsi_min_long: 50.0
-rsi_max_long: 72.0
-rsi_min_short: 28.0
+rsi_max_long: 75.0
+rsi_min_short: 25.0
 rsi_max_short: 50.0
 atr_stop_multiplier: 1.5
 signal_cooldown_bars: 3
 
-# Trade params
-take_profit_r: 2.5
-trailing_stop_pct: 0.015
+# Trade params — NO fixed TP. Trail the explosive move.
+# PEPE/WIF/BONK type coins can go 500-1000% in a cycle — don't cap it.
+take_profit_r: 999.0
+trailing_stop_pct: 0.05   # 5% trailing — tighter than EMA since momentum fades faster
+                           # Brain widens to 8-10% in trending regime
 
 warmup_bars: 30

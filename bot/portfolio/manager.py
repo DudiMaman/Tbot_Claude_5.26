@@ -50,7 +50,7 @@ class PortfolioManager:
             strategy_id=signal.strategy_id,
             idempotency_key=fill.idempotency_key,
             opened_at=fill.timestamp,
-            trailing_stop_pct=None,
+            trailing_stop_pct=signal.metadata.get("trailing_stop_pct") if signal.metadata else None,
             trailing_stop_high=fill.avg_price,
             fees_paid_entry=fill.fee_paid,
         )

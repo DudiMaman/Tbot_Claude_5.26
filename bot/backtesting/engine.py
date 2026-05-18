@@ -143,7 +143,12 @@ class BacktestEngine:
                     if signal is not None:
                         await self._handle_signal(signal, step_size)
 
-            # Check SL/TP on existing positions
+            # Update trailing stops on every bar before checking SL/TP
+            for sym, pos in list(self._portfolio.open_positions.items()):
+                curr_bar_obj = _row_to_bar(ts_dt, row, sym, primary_tf)
+                self._portfolio.update_on_bar(curr_bar_obj)
+
+            # Check SL/TP (including updated trailing stop levels) on existing positions
             await self._check_stop_take(row, primary_tf, ts_dt)
 
             # Record equity

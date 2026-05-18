@@ -1,7 +1,9 @@
 """
-EMA Crossover Strategy — Phase 2
-Entry: EMA fast crosses above/below EMA slow with ADX > threshold (trending market).
-Uses signal_tf for signal generation, trend_tf for higher-timeframe confirmation.
+EMA Crossover Strategy
+Entry: EMA fast crosses above/below EMA slow with ADX > threshold.
+Exit: Trailing stop only (no fixed TP when take_profit_r >= 100).
+      In trending markets the Brain widens the trailing stop to 10%
+      so 100-300% bull-run moves are captured, not cut at 3R.
 """
 from __future__ import annotations
 
@@ -14,6 +16,8 @@ from bot.core.config import StrategyConfig
 from bot.strategies.base import BaseStrategy, StrategyContext
 from bot.utils.indicators import adx as calc_adx, atr as calc_atr, ema as calc_ema
 
+_NO_FIXED_TP = 100.0   # take_profit_r >= this → trailing-stop-only mode
+
 
 class EMACrossoverStrategy(BaseStrategy):
     def __init__(self, config: StrategyConfig) -> None:
@@ -23,6 +27,7 @@ class EMACrossoverStrategy(BaseStrategy):
         self._adx_period: int = int(config.model_extra.get("adx_period", 14))
         self._adx_threshold: float = float(config.model_extra.get("adx_threshold", 25.0))
         self._atr_multiplier: float = float(config.model_extra.get("atr_multiplier", 2.0))
+        self._trailing_stop_pct: Optional[float] = config.trailing_stop_pct
 
     def _init_symbol_state(self):
         return {"bar_count": 0}
@@ -33,7 +38,6 @@ class EMACrossoverStrategy(BaseStrategy):
 
         if not self.is_warmed_up(symbol):
             return None
-
         if context.portfolio.has_position(symbol):
             return None
 
@@ -51,7 +55,6 @@ class EMACrossoverStrategy(BaseStrategy):
 
         if pd.isna(curr["ema_fast"]) or pd.isna(curr["ema_slow"]) or pd.isna(curr["adx"]):
             return None
-
         if curr["adx"] < self._adx_threshold:
             return None
 
@@ -67,16 +70,21 @@ class EMACrossoverStrategy(BaseStrategy):
             atr_val = entry * 0.01
 
         risk_dist = self._atr_multiplier * atr_val
+        trailing_pct = self._trailing_stop_pct or 0.07
+
         if bullish_cross:
             stop_loss = entry - risk_dist
-            take_profit = entry + self.config.take_profit_r * risk_dist
+            # Fixed TP disabled at high take_profit_r — trailing stop exits instead
+            take_profit = entry * 1e6 if self.config.take_profit_r >= _NO_FIXED_TP else entry + self.config.take_profit_r * risk_dist
             direction = "long"
         else:
             stop_loss = entry + risk_dist
-            take_profit = entry - self.config.take_profit_r * risk_dist
+            take_profit = entry / 1e6 if self.config.take_profit_r >= _NO_FIXED_TP else entry - self.config.take_profit_r * risk_dist
             direction = "short"
 
-        if stop_loss <= 0 or take_profit <= 0:
+        if stop_loss <= 0:
+            return None
+        if direction == "short" and take_profit <= 0:
             return None
 
         return Signal(
@@ -94,6 +102,7 @@ class EMACrossoverStrategy(BaseStrategy):
                 "ema_slow": round(float(curr["ema_slow"]), 6),
                 "adx": round(float(curr["adx"]), 2),
                 "atr": round(float(atr_val), 6),
+                "trailing_stop_pct": trailing_pct,
             },
         )
 

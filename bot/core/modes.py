@@ -16,5 +16,5 @@ class RiskMode(str, Enum):
         return {
             RiskMode.DEFENSIVE: 0.5,
             RiskMode.NORMAL: 1.0,
-            RiskMode.AGGRESSIVE: 1.25,
+            RiskMode.AGGRESSIVE: 2.0,   # 2× — meaningful upside in bull runs
         }[self]

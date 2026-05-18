@@ -14,19 +14,25 @@ symbols:
   - DOTUSDT
   - XRPUSDT
   - LTCUSDT
+  - INJUSDT
+  - ARBUSDT
+  - OPUSDT
 
 timeframes:
   signal: "4h"
   trend: "1D"
 
 # Indicator params
-lookback_bars: 10           # shortened from 20 to identify more breakouts
-confirmation_bars: 1        # enter on first close above resistance (with volume)
-volume_surge_multiplier: 1.3  # 1.3x average volume; checked on the initial break bar
-atr_min_break: 0.15           # break must be at least 0.15×ATR above resistance
-atr_stop_multiplier: 2.0      # stop = entry - atr_stop_multiplier × ATR
+lookback_bars: 10             # shorter lookback = more breakout levels identified
+confirmation_bars: 1
+volume_surge_multiplier: 1.3
+atr_min_break: 0.15
+atr_stop_multiplier: 2.0
 
-take_profit_r: 3.0            # TP at 3R
-trailing_stop_pct: 0.025      # 2.5% trailing stop to capture extended breakout moves
+# Trade params — NO fixed TP. Breakouts in bull markets run for weeks/months.
+# Let the trailing stop decide when the breakout is exhausted.
+take_profit_r: 999.0
+trailing_stop_pct: 0.08      # 8% trailing — breakout pullbacks are violent
+                              # Brain overrides to 10% in TRENDING_UP regime
 
 warmup_bars: 25

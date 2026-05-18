@@ -57,6 +57,9 @@ def _calc_rsi(series: pd.Series, length: int = 14) -> pd.Series:
     return 100 - (100 / (1 + rs))
 
 
+_NO_FIXED_TP = 100.0
+
+
 class MomentumSniperStrategy(BaseStrategy):
     def __init__(self, config: StrategyConfig) -> None:
         super().__init__(config)
@@ -68,6 +71,7 @@ class MomentumSniperStrategy(BaseStrategy):
         self._rsi_max_short: float = float(config.model_extra.get("rsi_max_short", 50.0))
         self._atr_stop_mult: float = float(config.model_extra.get("atr_stop_multiplier", 1.5))
         self._cooldown_bars: int = int(config.model_extra.get("signal_cooldown_bars", 3))
+        self._trailing_stop_pct: Optional[float] = config.trailing_stop_pct
 
     def _init_symbol_state(self):
         return {
@@ -148,6 +152,8 @@ class MomentumSniperStrategy(BaseStrategy):
             trend_bullish = last_close_1h > float(ema50_trend)
             trend_bearish = last_close_1h < float(ema50_trend)
 
+        trailing_pct = self._trailing_stop_pct or 0.05
+
         # LONG signal
         long_breakout = curr_close > resistance
         if (
@@ -156,23 +162,22 @@ class MomentumSniperStrategy(BaseStrategy):
             and not pd.isna(rsi_val)
             and self._rsi_min_long <= rsi_val <= self._rsi_max_long
             and ema9_bullish
-            and trend_bearish is not True  # skip longs if confirmed downtrend
+            and trend_bearish is not True
         ):
             entry = curr_close
             stop_loss = entry - self._atr_stop_mult * atr_val
             if stop_loss <= 0:
                 return None
             risk_dist = entry - stop_loss
-            take_profit = entry + self.config.take_profit_r * risk_dist
+            take_profit = (entry * 1e6 if self.config.take_profit_r >= _NO_FIXED_TP
+                           else entry + self.config.take_profit_r * risk_dist)
 
             state["last_signal_bar"] = current_bar
-            strength = min(volume_ratio / (self._vol_surge * 2), 1.0)
-
             return Signal(
                 strategy_id=self.strategy_id,
                 symbol=symbol,
                 direction="long",
-                strength=strength,
+                strength=min(volume_ratio / (self._vol_surge * 2), 1.0),
                 entry_price=entry,
                 stop_loss=stop_loss,
                 take_profit=take_profit,
@@ -183,6 +188,7 @@ class MomentumSniperStrategy(BaseStrategy):
                     "volume_ratio": round(volume_ratio, 2),
                     "rsi": round(rsi_val, 2),
                     "atr": round(atr_val, 6),
+                    "trailing_stop_pct": trailing_pct,
                 },
             )
 
@@ -194,25 +200,24 @@ class MomentumSniperStrategy(BaseStrategy):
             and not pd.isna(rsi_val)
             and self._rsi_min_short <= rsi_val <= self._rsi_max_short
             and not ema9_bullish
-            and trend_bullish is not True  # skip shorts if confirmed uptrend
+            and trend_bullish is not True
         ):
             entry = curr_close
             stop_loss = entry + self._atr_stop_mult * atr_val
             risk_dist = stop_loss - entry
             if risk_dist <= 0:
                 return None
-            take_profit = entry - self.config.take_profit_r * risk_dist
+            take_profit = (entry / 1e6 if self.config.take_profit_r >= _NO_FIXED_TP
+                           else entry - self.config.take_profit_r * risk_dist)
             if take_profit <= 0:
                 return None
 
             state["last_signal_bar"] = current_bar
-            strength = min(volume_ratio / (self._vol_surge * 2), 1.0)
-
             return Signal(
                 strategy_id=self.strategy_id,
                 symbol=symbol,
                 direction="short",
-                strength=strength,
+                strength=min(volume_ratio / (self._vol_surge * 2), 1.0),
                 entry_price=entry,
                 stop_loss=stop_loss,
                 take_profit=take_profit,
@@ -223,6 +228,7 @@ class MomentumSniperStrategy(BaseStrategy):
                     "volume_ratio": round(volume_ratio, 2),
                     "rsi": round(rsi_val, 2),
                     "atr": round(atr_val, 6),
+                    "trailing_stop_pct": trailing_pct,
                 },
             )
 

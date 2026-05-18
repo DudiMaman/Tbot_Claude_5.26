@@ -23,6 +23,9 @@ from bot.strategies.base import BaseStrategy, StrategyContext
 from bot.utils.indicators import atr as calc_atr, ema as calc_ema
 
 
+_NO_FIXED_TP = 100.0
+
+
 class BreakoutStrategy(BaseStrategy):
     def __init__(self, config: StrategyConfig) -> None:
         super().__init__(config)
@@ -31,6 +34,7 @@ class BreakoutStrategy(BaseStrategy):
         self._vol_surge: float = float(config.model_extra.get("volume_surge_multiplier", 1.3))
         self._atr_min_break: float = float(config.model_extra.get("atr_min_break", 0.15))
         self._atr_stop_mult: float = float(config.model_extra.get("atr_stop_multiplier", 2.0))
+        self._trailing_stop_pct: Optional[float] = config.trailing_stop_pct
 
     def _init_symbol_state(self):
         return {
@@ -104,16 +108,18 @@ class BreakoutStrategy(BaseStrategy):
             state["volume_confirmed"] = False
             return None
 
+        trailing_pct = self._trailing_stop_pct or 0.08
+
         if state["bull_count"] >= self._confirm_bars and state["volume_confirmed"]:
-            if daily_uptrend is False:  # skip longs in confirmed downtrend
+            if daily_uptrend is False:
                 return None
             entry = curr_close
-            # Use ATR-based stop (wider than S/R stop — gives room for first-bar retrace)
             stop_loss = entry - self._atr_stop_mult * atr_val
             if stop_loss <= 0:
                 return None
             risk_dist = entry - stop_loss
-            take_profit = entry + self.config.take_profit_r * risk_dist
+            take_profit = (entry * 1e6 if self.config.take_profit_r >= _NO_FIXED_TP
+                           else entry + self.config.take_profit_r * risk_dist)
             state["bull_count"] = 0
             state["volume_confirmed"] = False
             return Signal(
@@ -130,18 +136,20 @@ class BreakoutStrategy(BaseStrategy):
                     "resistance": round(resistance, 6),
                     "volume_ratio": round(curr_volume / max(avg_volume, 1), 2),
                     "atr": round(atr_val, 6),
+                    "trailing_stop_pct": trailing_pct,
                 },
             )
 
         if state["bear_count"] >= self._confirm_bars and state["volume_confirmed"]:
-            if daily_uptrend is True:  # skip shorts in confirmed uptrend
+            if daily_uptrend is True:
                 return None
             entry = curr_close
             stop_loss = entry + self._atr_stop_mult * atr_val
             risk_dist = stop_loss - entry
             if risk_dist <= 0:
                 return None
-            take_profit = entry - self.config.take_profit_r * risk_dist
+            take_profit = (entry / 1e6 if self.config.take_profit_r >= _NO_FIXED_TP
+                           else entry - self.config.take_profit_r * risk_dist)
             state["bear_count"] = 0
             state["volume_confirmed"] = False
             if take_profit <= 0:
@@ -160,6 +168,7 @@ class BreakoutStrategy(BaseStrategy):
                     "support": round(support, 6),
                     "volume_ratio": round(curr_volume / max(avg_volume, 1), 2),
                     "atr": round(atr_val, 6),
+                    "trailing_stop_pct": trailing_pct,
                 },
             )
 

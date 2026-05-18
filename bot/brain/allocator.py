@@ -147,13 +147,28 @@ class StrategyAllocator:
     def _param_overrides(regime: MarketRegime, strategy_id: str) -> dict[str, float]:
         overrides: dict[str, float] = {}
 
-        # ATR multiplier: wider in high-vol, tighter in low-vol
+        # ATR stop multiplier: wider in high-vol, tighter in low-vol
         if regime == MarketRegime.HIGH_VOL:
             overrides["atr_multiplier"] = 2.5
         elif regime == MarketRegime.LOW_VOL:
             overrides["atr_multiplier"] = 1.5
         else:
             overrides["atr_multiplier"] = 2.0
+
+        # Trailing stop: wider in trending regimes to ride 100-300% bull moves.
+        # TRENDING_UP/DOWN: 10% — large enough to survive 10% pullbacks in a 200% rally.
+        # HIGH_VOL: 8% — volatility spikes require room.
+        # RANGING: 3% — mean reversion exits quickly.
+        # LOW_VOL: 2% — tight trailing in quiet markets.
+        if strategy_id != "mean_reversion":  # mean reversion uses fixed TP, not trailing
+            if regime in (MarketRegime.TRENDING_UP, MarketRegime.TRENDING_DOWN):
+                overrides["trailing_stop_pct"] = 0.10
+            elif regime == MarketRegime.HIGH_VOL:
+                overrides["trailing_stop_pct"] = 0.08
+            elif regime == MarketRegime.RANGING:
+                overrides["trailing_stop_pct"] = 0.03
+            elif regime == MarketRegime.LOW_VOL:
+                overrides["trailing_stop_pct"] = 0.02
 
         # Mean reversion RSI thresholds adapt to vol regime
         if strategy_id == "mean_reversion":
@@ -163,6 +178,5 @@ class StrategyAllocator:
             elif regime == MarketRegime.LOW_VOL:
                 overrides["rsi_oversold"] = 33.0
                 overrides["rsi_overbought"] = 67.0
-            # RANGING/TRENDING: keep config defaults (no override)
 
         return overrides
