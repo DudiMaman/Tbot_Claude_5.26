@@ -14,3 +14,4 @@ logs/
 WARNING/
 KILL_SWITCH
 reports/
+*.pem
