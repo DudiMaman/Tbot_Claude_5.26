@@ -5,6 +5,7 @@ Handles lot-size normalization, min notional, partial fills, and rate limits.
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
@@ -41,6 +42,13 @@ class BinanceBroker(AbstractBroker):
         self._ws_base = _WS_USER_STREAM_TESTNET if testnet else _WS_USER_STREAM
         self._api_key = os.environ.get("BINANCE_API_KEY", "")
         self._secret = os.environ.get("BINANCE_SECRET", "")
+        # Ed25519 key pair — used when BINANCE_SECRET is empty and a PEM file exists
+        self._ed25519_key = None
+        pem_path = os.environ.get("BINANCE_ED25519_KEY", "binance_testnet_private.pem")
+        if not self._secret and os.path.exists(pem_path):
+            from cryptography.hazmat.primitives.serialization import load_pem_private_key
+            with open(pem_path, "rb") as f:
+                self._ed25519_key = load_pem_private_key(f.read(), password=None)
         self._orders: dict[str, Order] = {}
         self._fill_callbacks: list = []
         self._weight_used: int = 0
@@ -54,9 +62,11 @@ class BinanceBroker(AbstractBroker):
         self._fill_callbacks.append(cb)
 
     async def start(self) -> None:
-        if not self._api_key or not self._secret:
+        if not self._api_key:
+            raise RuntimeError("BINANCE_API_KEY must be set before starting BinanceBroker")
+        if not self._secret and self._ed25519_key is None:
             raise RuntimeError(
-                "BINANCE_API_KEY and BINANCE_SECRET must be set before starting BinanceBroker"
+                "Either BINANCE_SECRET (HMAC) or a binance_testnet_private.pem (Ed25519) must be present"
             )
         await self._load_exchange_info()
         self._listen_key = await self._create_listen_key()
@@ -229,7 +239,10 @@ class BinanceBroker(AbstractBroker):
 
         params["timestamp"] = int(time.time() * 1000)
         query = urlencode(params)
-        sig = hmac.new(self._secret.encode(), query.encode(), hashlib.sha256).hexdigest()
+        if self._ed25519_key is not None:
+            sig = base64.b64encode(self._ed25519_key.sign(query.encode())).decode()
+        else:
+            sig = hmac.new(self._secret.encode(), query.encode(), hashlib.sha256).hexdigest()
         params["signature"] = sig
 
         headers = {"X-MBX-APIKEY": self._api_key}
