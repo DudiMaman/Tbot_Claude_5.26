@@ -17,25 +17,23 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "type": "value", "options": { "live": { "text": "LIVE", "color": "green", "index": 0 } } },
-            { "type": "value", "options": { "paused": { "text": "PAUSED", "color": "orange", "index": 1 } } },
+            { "type": "range", "options": { "from": 0, "to": 30, "result": { "text": "LIVE", "color": "green" } } },
+            { "type": "range", "options": { "from": 30, "to": 120, "result": { "text": "SLOW", "color": "orange" } } },
+            { "type": "range", "options": { "from": 120, "to": 9999999, "result": { "text": "DOWN", "color": "red" } } },
             { "type": "special", "options": { "match": "null", "result": { "text": "DOWN", "color": "red" } } }
           ],
+          "unit": "none",
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] }
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "green", "value": 0 },
+            { "color": "orange", "value": 30 },
+            { "color": "red", "value": 120 }
+          ]}
         }
       },
-      "datasource": { "type": "yesoreyeram-infinity-datasource" },
-      "targets": [{
-        "refId": "A",
-        "type": "json",
-        "source": "url",
-        "url": "http://localhost:8001/status",
-        "url_options": { "method": "GET" },
-        "columns": [{ "selector": "status", "text": "Status", "type": "string" }],
-        "root_selector": ""
-      }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value", "graphMode": "none", "orientation": "auto" }
+      "targets": [{ "expr": "time() - trading_heartbeat_timestamp", "legendFormat": "", "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value", "graphMode": "none" }
     },
     {
       "id": 11,
