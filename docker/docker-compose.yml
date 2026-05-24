@@ -1,15 +1,15 @@
-version: "3.9"
-
 services:
   bot:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    command: ["python", "-m", "bot.main", "--strategies", "momentum_sniper"]
     env_file: ../.env
     volumes:
       - ../data_cache:/app/data_cache
       - ../logs:/app/logs
       - ../reports:/app/reports
+      - ../binance_testnet_private.pem:/app/binance_testnet_private.pem:ro
       # Kill switch file mount for emergency halt
       - ../KILL_SWITCH:/app/KILL_SWITCH
     ports:
