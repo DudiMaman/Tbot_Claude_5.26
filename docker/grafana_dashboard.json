@@ -1,0 +1,138 @@
+{
+  "title": "Trading Bot",
+  "uid": "tradingbot-main",
+  "timezone": "browser",
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Equity (USD)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 16, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": { "mode": "fixed", "fixedColor": "#73BF69" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "trading_equity_usd",
+          "legendFormat": "Equity",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "single" } }
+    },
+    {
+      "id": 2,
+      "title": "Daily P&L",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "trading_daily_pnl_usd", "legendFormat": "Day P&L", "refId": "A" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 3,
+      "title": "Open Positions",
+      "type": "stat",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "sum(trading_open_positions)", "legendFormat": "Positions", "refId": "A" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 4,
+      "title": "Total Fills",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 4, "w": 4, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "#5794F2" }
+        }
+      },
+      "targets": [
+        { "expr": "sum(trading_fills_total)", "legendFormat": "Fills", "refId": "A" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 5,
+      "title": "Fills — Buy vs Sell",
+      "type": "stat",
+      "gridPos": { "x": 20, "y": 4, "w": 4, "h": 4 },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "buy" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] },
+          { "matcher": { "id": "byName", "options": "sell" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
+        ]
+      },
+      "targets": [
+        { "expr": "trading_fills_total{side=\"buy\"}", "legendFormat": "buy", "refId": "A" },
+        { "expr": "trading_fills_total{side=\"sell\"}", "legendFormat": "sell", "refId": "B" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "horizontal" }
+    },
+    {
+      "id": 6,
+      "title": "Fills per minute",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "drawStyle": "bars" }
+        }
+      },
+      "targets": [
+        { "expr": "rate(trading_fills_total[1m]) * 60", "legendFormat": "{{side}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Signal Rejections by Reason",
+      "type": "barchart",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [
+        { "expr": "sort_desc(trading_rejections_total)", "legendFormat": "{{reason}}", "refId": "A" }
+      ],
+      "options": { "xTickLabelRotation": -30 }
+    }
+  ],
+  "schemaVersion": 38
+}
