@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    command: ["python", "-m", "bot.main", "--strategies", "momentum_sniper"]
+    command: ["python", "-m", "bot.main", "--strategies", "momentum_sniper", "--synthetic-feed"]
     env_file: ../.env
     volumes:
       - ../data_cache:/app/data_cache
