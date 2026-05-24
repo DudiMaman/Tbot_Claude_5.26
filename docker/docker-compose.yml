@@ -6,6 +6,8 @@ services:
     command: ["python", "-m", "bot.main", "--strategies", "momentum_sniper", "--synthetic-feed"]
     env_file: ../.env
     volumes:
+      - ../bot:/app/bot:ro
+      - ../config:/app/config:ro
       - ../data_cache:/app/data_cache
       - ../logs:/app/logs
       - ../reports:/app/reports
