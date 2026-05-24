@@ -10,8 +10,6 @@ services:
       - ../logs:/app/logs
       - ../reports:/app/reports
       - ../binance_testnet_private.pem:/app/binance_testnet_private.pem:ro
-      # Kill switch file mount for emergency halt
-      - ../KILL_SWITCH:/app/KILL_SWITCH
     ports:
       - "8000:8000"   # Prometheus metrics
     restart: unless-stopped
