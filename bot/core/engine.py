@@ -23,7 +23,7 @@ from bot.execution.base import AbstractBroker
 from bot.execution.fee_model import FeeModel
 from bot.execution.paper import PaperBroker
 from bot.portfolio.manager import PortfolioManager
-from bot.reporting.alerts import send_circuit_breaker_alert, send_fill_alert
+from bot.reporting.alerts import send_circuit_breaker_alert, send_daily_summary, send_fill_alert
 from bot.reporting.equity_curve import EquityCurve
 from bot.reporting.prometheus import TradingMetrics
 from bot.risk.circuit_breaker import KillSwitch
@@ -79,6 +79,7 @@ class TradingEngine:
         self._equity_curve = EquityCurve()
         self._metrics: Optional[TradingMetrics] = None
         self._pending_signals: dict[str, tuple[Signal, float]] = {}  # idempotency_key → (signal, qty)
+        self._alerted_circuit_breakers: set[str] = set()
         self._running = False
         self._stale_check_interval = risk_config.stale_order_timeout_minutes * 60
         self._status_interval = status_interval_seconds
@@ -277,6 +278,10 @@ class TradingEngine:
                 self._metrics.rejections_total.labels(
                     reason=rejection.reason.split(":")[0]
                 ).inc()
+            _CIRCUIT_BREAKER_REASONS = {"daily_loss_limit_breached", "losing_streak_halt", "kill_switch_active"}
+            if rejection.reason in _CIRCUIT_BREAKER_REASONS and rejection.reason not in self._alerted_circuit_breakers:
+                self._alerted_circuit_breakers.add(rejection.reason)
+                asyncio.create_task(send_circuit_breaker_alert(rejection.reason, capital))
             return
 
         idem_key = make_key(signal.strategy_id, signal.symbol, signal.direction, signal.timestamp)
@@ -326,10 +331,9 @@ class TradingEngine:
         if self._metrics:
             self._metrics.fills_total.labels(side=fill.side).inc()
 
-        if self._mode == ExecutionMode.LIVE:
-            asyncio.create_task(send_fill_alert(
-                fill.symbol, fill.side, fill.qty_filled, fill.avg_price, fill.fee_paid
-            ))
+        asyncio.create_task(send_fill_alert(
+            fill.symbol, fill.side, fill.qty_filled, fill.avg_price, fill.fee_paid
+        ))
 
         logger.info(
             "fill_processed",
@@ -373,6 +377,7 @@ class TradingEngine:
 
             self._portfolio.reset_daily_pnl()
             self._risk_mgr.reset_daily()
+            self._alerted_circuit_breakers.clear()
             logger.info("daily_reset_complete")
 
             asyncio.create_task(
