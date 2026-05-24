@@ -236,6 +236,9 @@ class TradingEngine:
             self._metrics.equity.labels(mode=self._mode.value).set(equity)
             self._metrics.daily_pnl.set(self._portfolio.daily_net_pnl())
             self._metrics.heartbeat.set(_time.time())
+            self._metrics.open_positions.labels(asset_class=self._bcfg.asset_class).set(
+                self._portfolio.open_position_count()
+            )
 
         # Feed the Brain a price DataFrame for regime detection + assessment
         if self._brain is not None:
