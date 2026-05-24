@@ -26,6 +26,7 @@ from bot.portfolio.manager import PortfolioManager
 from bot.reporting.alerts import send_circuit_breaker_alert, send_daily_summary, send_fill_alert
 from bot.reporting.equity_curve import EquityCurve
 from bot.reporting.prometheus import TradingMetrics
+from bot.reporting.trade_api import start_api, stop_api
 from bot.risk.circuit_breaker import KillSwitch
 from bot.risk.manager import RiskManager
 from bot.brain.engine import BrainEngine
@@ -130,6 +131,8 @@ class TradingEngine:
         if self._warmup_data:
             self._pre_warm_from_data(self._warmup_data)
 
+        await start_api(self._portfolio, self._risk_mgr, port=8001)
+
         self._background_tasks = [
             asyncio.create_task(self._stale_order_monitor()),
             asyncio.create_task(self._daily_reset_loop()),
@@ -159,6 +162,7 @@ class TradingEngine:
                 await asyncio.gather(*self._background_tasks, return_exceptions=True)
             self._background_tasks.clear()
             await self._broker.stop()
+            await stop_api()
             logger.info("engine_stopped")
 
     def _pre_warm_from_data(

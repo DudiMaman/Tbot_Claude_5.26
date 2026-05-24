@@ -14,6 +14,7 @@ services:
       - ../binance_testnet_private.pem:/app/binance_testnet_private.pem:ro
     ports:
       - "8000:8000"   # Prometheus metrics
+      - "8001:8001"   # Trade API (Grafana Infinity)
     restart: unless-stopped
     logging:
       driver: "json-file"
