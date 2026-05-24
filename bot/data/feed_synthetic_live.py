@@ -23,6 +23,14 @@ _INITIAL_PRICES: dict[str, float] = {
     "SOLUSDT":     150.0,
     "XRPUSDT":       0.6,
     "ADAUSDT":       0.4,
+    "ARBUSDT":       0.8,
+    "OPUSDT":        1.5,
+    "DOGEUSDT":      0.18,
+    "MATICUSDT":     0.55,
+    "LINKUSDT":      14.0,
+    "INJUSDT":       25.0,
+    "AVAXUSDT":      35.0,
+    "DOTUSDT":        6.5,
 }
 
 # Each timeframe's fraction of a 252-day trading year
@@ -100,7 +108,9 @@ class SyntheticLiveFeed(AbstractDataFeed):
             high = max(price, close) * math.exp(high_wick)
             low = min(price, close) * math.exp(-low_wick)
 
-            volume = max(10.0, rng.gauss(500, 150))
+            # Log-normal volume: realistic crypto distribution with ~8% chance of 2x surge
+            log_vol = rng.gauss(5.97, 0.70)  # LN(mu=5.97, sigma=0.70) → mean≈500, P(≥1000)≈8%
+            volume = max(10.0, math.exp(log_vol))
 
             yield OHLCVBar(
                 symbol=symbol,
