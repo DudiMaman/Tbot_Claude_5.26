@@ -15,6 +15,7 @@ class TradingMetrics:
         self.fills_total = Counter("trading_fills_total", "Total fills", ["side"])
         self.rejections_total = Counter("trading_rejections_total", "Signal rejections", ["reason"])
         self.api_errors_total = Counter("trading_api_errors_total", "API errors", ["broker"])
+        self.heartbeat = Gauge("trading_heartbeat_timestamp", "Unix timestamp of last bar processed")
 
     def start_server(self, port: int = 8000) -> None:
         start_http_server(port)

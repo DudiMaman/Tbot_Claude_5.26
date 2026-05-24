@@ -231,9 +231,11 @@ class TradingEngine:
 
         # Update metrics
         if self._metrics:
+            import time as _time
             equity = self._portfolio.equity()
             self._metrics.equity.labels(mode=self._mode.value).set(equity)
             self._metrics.daily_pnl.set(self._portfolio.daily_net_pnl())
+            self._metrics.heartbeat.set(_time.time())
 
         # Feed the Brain a price DataFrame for regime detection + assessment
         if self._brain is not None:

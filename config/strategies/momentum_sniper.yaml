@@ -15,14 +15,16 @@ timeframes:
   trend: "1h"
 
 # Indicator params
+# NOTE: volume_surge/RSI loosened for synthetic-feed paper testing.
+# Restore to 2.0 / 55.0 / 80.0 / 20.0 / 45.0 before live trading.
 lookback_bars: 20          # 20 bars × 15m = 5h — more meaningful resistance/support
-volume_surge_multiplier: 2.0
-rsi_min_long: 55.0         # raised: require more momentum to enter long
-rsi_max_long: 80.0
-rsi_min_short: 20.0
-rsi_max_short: 45.0        # lowered: require more weakness to enter short
+volume_surge_multiplier: 1.3
+rsi_min_long: 50.0
+rsi_max_long: 85.0
+rsi_min_short: 15.0
+rsi_max_short: 50.0
 atr_stop_multiplier: 1.5
-signal_cooldown_bars: 5    # longer cooldown to avoid churning
+signal_cooldown_bars: 3
 
 # Trade params — NO fixed TP. Trail the explosive move.
 # PEPE/WIF/BONK type coins can go 500-1000% in a cycle — don't cap it.

@@ -72,7 +72,7 @@ class SyntheticLiveFeed(AbstractDataFeed):
     def __init__(
         self,
         bar_seconds: float = 5.0,
-        annual_drift: float = 0.50,
+        annual_drift: float = 1.50,
         annual_vol: float = 0.75,
         seed: Optional[int] = None,
     ) -> None:
