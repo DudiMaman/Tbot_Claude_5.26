@@ -12,6 +12,24 @@
   "templating": {
     "list": [
       {
+        "name": "datasource",
+        "type": "datasource",
+        "label": "Prometheus",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      },
+      {
+        "name": "infinity_ds",
+        "type": "datasource",
+        "label": "Bot API (Infinity)",
+        "query": "yesoreyeram-infinity-datasource",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      },
+      {
         "name": "bot_api",
         "type": "textbox",
         "label": "Bot API URL",
@@ -35,6 +53,7 @@
       "id": 10,
       "title": "Bot Status",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
       "description": "Green = bar processed in last 30s. Orange = 30–120s. Red = >120s (likely dead).",
       "fieldConfig": {
@@ -62,6 +81,7 @@
       "id": 11,
       "title": "Safety Breaker",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
       "description": "0 = normal trading. 1 = defensive (reduced size). 2 = streak halt. 3 = daily loss breached (paused until UTC midnight).",
       "fieldConfig": {
@@ -87,6 +107,7 @@
       "id": 12,
       "title": "Open Positions",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
       "fieldConfig": {
         "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }
@@ -98,6 +119,7 @@
       "id": 13,
       "title": "Consecutive Losses",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
       "description": "Streak guard goes DEFENSIVE at the configured threshold and HALTS at the higher threshold.",
       "fieldConfig": {
@@ -127,6 +149,7 @@
       "id": 20,
       "title": "Total Net P&L",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 0, "y": 6, "w": 6, "h": 5 },
       "description": "Cumulative realized net P&L across all closed trades.",
       "fieldConfig": {
@@ -146,6 +169,7 @@
       "id": 21,
       "title": "Win Rate",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 6, "y": 6, "w": 6, "h": 5 },
       "description": "Wins / total closed trades. Trend-following strategies often run 10–25% with high R:R; mean-reversion 50–65%.",
       "fieldConfig": {
@@ -167,6 +191,7 @@
       "id": 22,
       "title": "Profit Factor",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 12, "y": 6, "w": 6, "h": 5 },
       "description": "Sum of wins / |sum of losses|. >1 = profitable, >1.5 = healthy, >2 = excellent.",
       "fieldConfig": {
@@ -188,6 +213,7 @@
       "id": 23,
       "title": "Max Drawdown",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 18, "y": 6, "w": 6, "h": 5 },
       "description": "Largest peak-to-trough equity drop in %. Lower is better.",
       "fieldConfig": {
@@ -209,6 +235,7 @@
       "id": 24,
       "title": "Daily P&L",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 0, "y": 11, "w": 8, "h": 4 },
       "fieldConfig": {
         "defaults": {
@@ -227,6 +254,7 @@
       "id": 25,
       "title": "Total Fees Paid",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 8, "y": 11, "w": 8, "h": 4 },
       "description": "Lifetime maker+taker fees deducted from net P&L.",
       "fieldConfig": {
@@ -239,6 +267,7 @@
       "id": 26,
       "title": "Closed Trades",
       "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 16, "y": 11, "w": 8, "h": 4 },
       "fieldConfig": {
         "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }
@@ -259,8 +288,9 @@
       "id": 30,
       "title": "Equity (USD)",
       "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 0, "y": 16, "w": 24, "h": 9 },
-      "description": "Live portfolio equity. Dashed line = starting capital ($5,000).",
+      "description": "Live portfolio equity. Y-axis clamped to $3.5K–$6.5K so real dips stand out.",
       "fieldConfig": {
         "defaults": {
           "unit": "currencyUSD",
@@ -295,6 +325,7 @@
       "id": 40,
       "title": "Fills per minute",
       "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 0, "y": 26, "w": 12, "h": 7 },
       "fieldConfig": {
         "defaults": {
@@ -312,6 +343,7 @@
       "id": 41,
       "title": "Signal Rejections by Reason",
       "type": "barchart",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 12, "y": 26, "w": 12, "h": 7 },
       "description": "Why the risk manager turned signals away. Heavy 'daily_loss_limit_breached' = bot keeps tripping its breaker.",
       "fieldConfig": {
@@ -325,9 +357,9 @@
       "id": 50,
       "title": "Per-Symbol Performance",
       "type": "table",
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "${infinity_ds}" },
       "gridPos": { "x": 0, "y": 33, "w": 24, "h": 8 },
       "description": "Per-symbol breakdown of closed-trade performance.",
-      "datasource": { "type": "yesoreyeram-infinity-datasource" },
       "fieldConfig": {
         "defaults": { "custom": { "align": "auto" } },
         "overrides": [
@@ -374,9 +406,9 @@
       "id": 60,
       "title": "Closed Trades",
       "type": "table",
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "${infinity_ds}" },
       "gridPos": { "x": 0, "y": 42, "w": 24, "h": 12 },
       "description": "Newest first. WIN/LOSS color comes from net P&L sign.",
-      "datasource": { "type": "yesoreyeram-infinity-datasource" },
       "fieldConfig": {
         "defaults": { "custom": { "align": "auto" } },
         "overrides": [
