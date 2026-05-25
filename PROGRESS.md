@@ -1,8 +1,8 @@
 # Trading Bot — Progress Tracker
 
 ## Target
-**5% per month minimum** after fees, slippage, and spread on <$5k capital.
-**Confirmed achieved:** Momentum Sniper on XRP/ARB/OP → **+12.57%/month** (backtested Jul–Dec 2024).
+**+12% per month and above** after fees, slippage, and spread on <$5k capital.
+Target raised from the original 5% floor after Momentum Sniper on XRP/ARB/OP delivered **+12.57%/month** (backtested Jul–Dec 2024) — the new bar reflects the strategy's demonstrated performance.
 
 ---
 
