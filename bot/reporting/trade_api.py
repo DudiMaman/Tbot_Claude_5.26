@@ -1,12 +1,15 @@
 """Lightweight JSON API for Grafana Infinity plugin.
 
 Exposes:
-  GET /status  — bot health + circuit breaker state
-  GET /trades  — full closed trade history
+  GET /status        — bot health + circuit breaker state
+  GET /trades        — full closed trade history
+  GET /symbol_stats  — per-symbol aggregates (P&L, win rate, profit factor)
+
+All endpoints return JSON and set CORS headers so a browser-side Grafana
+Cloud dashboard can fetch them when the bot is exposed publicly.
 """
 from __future__ import annotations
 
-import asyncio
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -19,6 +22,16 @@ if TYPE_CHECKING:
 
 _runner: web.AppRunner | None = None
 
+_CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "*",
+}
+
+
+def _json(payload) -> web.Response:
+    return web.json_response(payload, headers=_CORS_HEADERS)
+
 
 def _build_app(portfolio: "PortfolioManager", risk_mgr: "RiskManager") -> web.Application:
     app = web.Application()
@@ -27,16 +40,22 @@ def _build_app(portfolio: "PortfolioManager", risk_mgr: "RiskManager") -> web.Ap
         halted = risk_mgr._streak_guard.is_halted
         daily_breached = risk_mgr._daily_breaker.is_triggered
         paused = halted or daily_breached
+        tracker = portfolio.tracker
 
-        return web.json_response({
+        return _json({
             "status": "paused" if paused else "live",
             "paused": paused,
             "daily_loss_breached": daily_breached,
             "losing_streak_halted": halted,
+            "breaker_state": risk_mgr.breaker_state_code(),
             "equity_usd": round(portfolio.equity(), 2),
             "daily_pnl_usd": round(portfolio.daily_net_pnl(), 2),
+            "total_net_pnl_usd": round(tracker.total_net_pnl(), 2),
             "open_positions": portfolio.open_position_count(),
             "consecutive_losses": portfolio.consecutive_losses(),
+            "closed_trades": len(tracker.closed_trades),
+            "win_rate_pct": round(tracker.win_rate() * 100.0, 2),
+            "profit_factor": round(tracker.profit_factor(), 2),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
@@ -57,12 +76,19 @@ def _build_app(portfolio: "PortfolioManager", risk_mgr: "RiskManager") -> web.Ap
                 "duration_min": round(t.duration_seconds / 60, 1),
                 "result": "win" if t.net_pnl > 0 else "loss",
             })
-        # newest first
         rows.sort(key=lambda r: r["time"], reverse=True)
-        return web.json_response(rows)
+        return _json(rows)
+
+    async def symbol_stats(request: web.Request) -> web.Response:
+        return _json(portfolio.tracker.symbol_stats())
+
+    async def options_handler(request: web.Request) -> web.Response:
+        return web.Response(headers=_CORS_HEADERS)
 
     app.router.add_get("/status", status)
     app.router.add_get("/trades", trades)
+    app.router.add_get("/symbol_stats", symbol_stats)
+    app.router.add_route("OPTIONS", "/{tail:.*}", options_handler)
     return app
 
 

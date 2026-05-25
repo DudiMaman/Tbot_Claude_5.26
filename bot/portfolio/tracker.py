@@ -85,3 +85,46 @@ class PnLTracker:
 
     def total_fees_paid(self) -> float:
         return sum(t.fees_paid for t in self._closed_trades)
+
+    def profit_factor(self) -> float:
+        wins = sum(t.net_pnl for t in self._closed_trades if t.net_pnl > 0)
+        losses = -sum(t.net_pnl for t in self._closed_trades if t.net_pnl < 0)
+        return wins / losses if losses > 0 else 0.0
+
+    def max_drawdown_pct(self, starting_equity: float) -> float:
+        """Peak-to-trough drawdown over the closed-trade equity curve, as a %."""
+        if not self._closed_trades or starting_equity <= 0:
+            return 0.0
+        equity = starting_equity
+        peak = starting_equity
+        max_dd = 0.0
+        for t in sorted(self._closed_trades, key=lambda x: x.closed_at):
+            equity += t.net_pnl
+            if equity > peak:
+                peak = equity
+            dd = (peak - equity) / peak if peak > 0 else 0.0
+            if dd > max_dd:
+                max_dd = dd
+        return max_dd * 100.0
+
+    def symbol_stats(self) -> list[dict]:
+        """Per-symbol aggregates for the dashboard."""
+        from collections import defaultdict
+        groups: dict[str, list[TradeSummary]] = defaultdict(list)
+        for t in self._closed_trades:
+            groups[t.symbol].append(t)
+        out: list[dict] = []
+        for sym, trades in groups.items():
+            wins = [t for t in trades if t.net_pnl > 0]
+            losses_sum = -sum(t.net_pnl for t in trades if t.net_pnl < 0)
+            wins_sum = sum(t.net_pnl for t in wins)
+            out.append({
+                "symbol": sym,
+                "trades": len(trades),
+                "win_rate_pct": round(100.0 * len(wins) / len(trades), 1) if trades else 0.0,
+                "net_pnl": round(sum(t.net_pnl for t in trades), 2),
+                "fees": round(sum(t.fees_paid for t in trades), 2),
+                "profit_factor": round(wins_sum / losses_sum, 2) if losses_sum > 0 else 0.0,
+            })
+        out.sort(key=lambda r: r["net_pnl"], reverse=True)
+        return out

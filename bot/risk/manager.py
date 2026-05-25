@@ -170,3 +170,13 @@ class RiskManager:
     @property
     def risk_mode(self) -> RiskMode:
         return self._risk_mode
+
+    def breaker_state_code(self) -> int:
+        """0=normal, 1=defensive, 2=streak_halt, 3=daily_loss_breach (highest wins)."""
+        if self._daily_breaker.is_triggered:
+            return 3
+        if self._streak_guard.is_halted:
+            return 2
+        if self._streak_guard.risk_mode == RiskMode.DEFENSIVE:
+            return 1
+        return 0

@@ -243,6 +243,7 @@ class TradingEngine:
             self._metrics.open_positions.labels(asset_class=self._bcfg.asset_class).set(
                 self._portfolio.open_position_count()
             )
+            self._publish_kpi_metrics()
 
         # Feed the Brain a price DataFrame for regime detection + assessment
         if self._brain is not None:
@@ -339,6 +340,7 @@ class TradingEngine:
 
         if self._metrics:
             self._metrics.fills_total.labels(side=fill.side).inc()
+            self._publish_kpi_metrics()
 
         asyncio.create_task(send_fill_alert(
             fill.symbol, fill.side, fill.qty_filled, fill.avg_price, fill.fee_paid
@@ -495,6 +497,20 @@ class TradingEngine:
 
     def stop(self) -> None:
         self._running = False
+
+    def _publish_kpi_metrics(self) -> None:
+        """Push performance KPIs + safety state to Prometheus gauges."""
+        if not self._metrics:
+            return
+        tracker = self._portfolio.tracker
+        self._metrics.total_net_pnl.set(tracker.total_net_pnl())
+        self._metrics.total_fees.set(tracker.total_fees_paid())
+        self._metrics.win_rate_pct.set(tracker.win_rate() * 100.0)
+        self._metrics.profit_factor.set(tracker.profit_factor())
+        self._metrics.max_drawdown_pct.set(tracker.max_drawdown_pct(self._rcfg.capital_usd))
+        self._metrics.closed_trades_total.set(len(tracker.closed_trades))
+        self._metrics.consecutive_losses.set(tracker.consecutive_losses)
+        self._metrics.breaker_state.set(self._risk_mgr.breaker_state_code())
 
 
 def _adjust_signal_for_gap(signal: "Signal", fill_price: float) -> None:
