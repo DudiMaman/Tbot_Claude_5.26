@@ -483,7 +483,7 @@
         "url": "${bot_api}/trades",
         "url_options": { "method": "GET" },
         "columns": [
-          { "selector": "time", "text": "Time", "type": "timestamp_epoch_s" },
+          { "selector": "time", "text": "Time", "type": "timestamp" },
           { "selector": "symbol", "text": "Symbol", "type": "string" },
           { "selector": "side", "text": "Side", "type": "string" },
           { "selector": "entry_price", "text": "Entry", "type": "number" },
