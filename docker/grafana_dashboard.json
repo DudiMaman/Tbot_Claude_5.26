@@ -6,9 +6,10 @@
   "time": { "from": "now-24h", "to": "now" },
   "timepicker": {
     "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"],
-    "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+    "time_options": ["1h", "6h", "12h", "24h", "2d", "7d", "30d"]
   },
   "tags": ["trading", "bot"],
+  "style": "dark",
   "templating": {
     "list": [
       {
@@ -33,7 +34,7 @@
         "name": "bot_api",
         "type": "textbox",
         "label": "Bot API URL",
-        "description": "Base URL of the bot's trade API (port 8001). Use http://localhost:8001 for local Grafana, http://bot:8001 for same-Docker-network Grafana, or https://<your-public-host>:8001 for Grafana Cloud.",
+        "description": "Reach the bot's port 8001 — http://localhost:8001 for local Grafana, http://bot:8001 for same-Docker-network, or http://<VM_PUBLIC_IP>:8001 for Grafana Cloud.",
         "query": "http://localhost:8001",
         "current": { "text": "http://localhost:8001", "value": "http://localhost:8001" },
         "hide": 0
@@ -42,20 +43,94 @@
   },
   "panels": [
     {
-      "type": "row",
-      "id": 100,
-      "title": "System Health",
-      "collapsed": false,
-      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
-      "panels": []
-    },
-    {
-      "id": 10,
-      "title": "Bot Status",
+      "id": 1,
+      "title": "Portfolio Equity",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
-      "description": "Green = bar processed in last 30s. Orange = 30–120s. Red = >120s (likely dead).",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 5 },
+      "description": "Current portfolio value (cash + open positions).",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "#5794F2" },
+          "custom": { "lineWidth": 2, "fillOpacity": 25, "gradientMode": "opacity" }
+        }
+      },
+      "targets": [{ "expr": "trading_equity_usd", "refId": "A" }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "graphMode": "area",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Total Return",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 5 },
+      "description": "Equity − starting capital. The lifetime P&L on your deposit.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "#E02F44", "value": null },
+            { "color": "#73BF69", "value": 0 }
+          ]},
+          "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "opacity" }
+        }
+      },
+      "targets": [{ "expr": "trading_equity_usd - trading_initial_capital_usd", "refId": "A" }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "graphMode": "area",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Total Return %",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 5 },
+      "description": "Lifetime return on starting capital. Target: ≥ +12%/mo.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "#E02F44", "value": null },
+            { "color": "#FF9830", "value": 0 },
+            { "color": "#73BF69", "value": 12 }
+          ]},
+          "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "opacity" }
+        }
+      },
+      "targets": [{ "expr": "(trading_equity_usd - trading_initial_capital_usd) / trading_initial_capital_usd * 100", "refId": "A" }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "graphMode": "area",
+        "justifyMode": "center"
+      }
+    },
+
+    {
+      "id": 10,
+      "title": "Bot",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 5, "w": 4, "h": 3 },
+      "description": "Green = bar processed in last 30s. Orange = 30–120s. Red = >120s (dead).",
       "fieldConfig": {
         "defaults": {
           "mappings": [
@@ -75,15 +150,15 @@
         }
       },
       "targets": [{ "expr": "time() - trading_heartbeat_timestamp", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value", "graphMode": "none" }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background_solid", "textMode": "value", "graphMode": "none", "justifyMode": "center" }
     },
     {
       "id": 11,
       "title": "Safety Breaker",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
-      "description": "0 = normal trading. 1 = defensive (reduced size). 2 = streak halt. 3 = daily loss breached (paused until UTC midnight).",
+      "gridPos": { "x": 4, "y": 5, "w": 8, "h": 3 },
+      "description": "0=normal · 1=defensive · 2=streak halt · 3=daily loss breach (paused until UTC midnight).",
       "fieldConfig": {
         "defaults": {
           "mappings": [
@@ -101,27 +176,47 @@
         }
       },
       "targets": [{ "expr": "trading_breaker_state", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value", "graphMode": "none" }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background_solid", "textMode": "value", "graphMode": "none", "justifyMode": "center" }
     },
     {
       "id": 12,
       "title": "Open Positions",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+      "gridPos": { "x": 12, "y": 5, "w": 4, "h": 3 },
       "fieldConfig": {
-        "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }
+        "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "#5794F2" } }
       },
       "targets": [{ "expr": "sum(trading_open_positions)", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none" }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none", "justifyMode": "center" }
     },
     {
       "id": 13,
-      "title": "Consecutive Losses",
+      "title": "Daily P&L",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
-      "description": "Streak guard goes DEFENSIVE at the configured threshold and HALTS at the higher threshold.",
+      "gridPos": { "x": 16, "y": 5, "w": 4, "h": 3 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "#E02F44", "value": null },
+            { "color": "#73BF69", "value": 0 }
+          ]}
+        }
+      },
+      "targets": [{ "expr": "trading_daily_pnl_usd", "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "area", "justifyMode": "center" }
+    },
+    {
+      "id": 14,
+      "title": "Streak Losses",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 20, "y": 5, "w": 4, "h": 3 },
+      "description": "Defensive mode kicks in at the configured threshold; full halt at the higher one.",
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -134,223 +229,181 @@
         }
       },
       "targets": [{ "expr": "trading_consecutive_losses", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none" }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none", "justifyMode": "center" }
     },
 
     {
-      "type": "row",
-      "id": 101,
-      "title": "Performance vs +12%/mo target",
-      "collapsed": false,
-      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 },
-      "panels": []
-    },
-    {
       "id": 20,
-      "title": "Total Net P&L",
-      "type": "stat",
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 0, "y": 6, "w": 6, "h": 5 },
-      "description": "Cumulative realized net P&L across all closed trades.",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red", "value": null },
-            { "color": "green", "value": 0 }
-          ]}
-        }
-      },
-      "targets": [{ "expr": "trading_total_net_pnl_usd", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value", "graphMode": "area" }
-    },
-    {
-      "id": 21,
       "title": "Win Rate",
-      "type": "stat",
+      "type": "gauge",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 6, "y": 6, "w": 6, "h": 5 },
-      "description": "Wins / total closed trades. Trend-following strategies often run 10–25% with high R:R; mean-reversion 50–65%.",
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 6 },
+      "description": "Wins / closed trades. Trend strategies often run 10–25% with high R:R.",
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
+          "min": 0,
+          "max": 100,
           "decimals": 1,
           "color": { "mode": "thresholds" },
           "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red", "value": null },
-            { "color": "orange", "value": 10 },
-            { "color": "green", "value": 30 }
+            { "color": "#E02F44", "value": null },
+            { "color": "#FF9830", "value": 15 },
+            { "color": "#73BF69", "value": 30 }
           ]}
         }
       },
       "targets": [{ "expr": "trading_win_rate_pct", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none" }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true, "orientation": "auto" }
     },
     {
-      "id": 22,
+      "id": 21,
       "title": "Profit Factor",
-      "type": "stat",
+      "type": "gauge",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 12, "y": 6, "w": 6, "h": 5 },
-      "description": "Sum of wins / |sum of losses|. >1 = profitable, >1.5 = healthy, >2 = excellent.",
+      "gridPos": { "x": 6, "y": 8, "w": 6, "h": 6 },
+      "description": "Σ wins / |Σ losses|. >1 profitable · >1.5 healthy · >2 excellent.",
       "fieldConfig": {
         "defaults": {
           "unit": "none",
+          "min": 0,
+          "max": 3,
           "decimals": 2,
           "color": { "mode": "thresholds" },
           "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red", "value": null },
-            { "color": "orange", "value": 1 },
-            { "color": "green", "value": 1.5 }
+            { "color": "#E02F44", "value": null },
+            { "color": "#FF9830", "value": 1 },
+            { "color": "#73BF69", "value": 1.5 }
           ]}
         }
       },
       "targets": [{ "expr": "trading_profit_factor", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none" }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true, "orientation": "auto" }
     },
     {
-      "id": 23,
+      "id": 22,
       "title": "Max Drawdown",
-      "type": "stat",
+      "type": "gauge",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 18, "y": 6, "w": 6, "h": 5 },
-      "description": "Largest peak-to-trough equity drop in %. Lower is better.",
+      "gridPos": { "x": 12, "y": 8, "w": 6, "h": 6 },
+      "description": "Largest peak-to-trough drop. Lower is better.",
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
+          "min": 0,
+          "max": 20,
           "decimals": 2,
           "color": { "mode": "thresholds" },
           "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green", "value": null },
-            { "color": "orange", "value": 5 },
-            { "color": "red", "value": 10 }
+            { "color": "#73BF69", "value": null },
+            { "color": "#FF9830", "value": 5 },
+            { "color": "#E02F44", "value": 10 }
           ]}
         }
       },
       "targets": [{ "expr": "trading_max_drawdown_pct", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none" }
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true, "orientation": "auto" }
     },
     {
-      "id": 24,
-      "title": "Daily P&L",
+      "id": 23,
+      "title": "Closed Trades · Total Fees",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 0, "y": 11, "w": 8, "h": 4 },
+      "gridPos": { "x": 18, "y": 8, "w": 6, "h": 6 },
       "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red", "value": null },
-            { "color": "green", "value": 0 }
+        "defaults": { "color": { "mode": "fixed", "fixedColor": "#5794F2" } },
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [
+            { "id": "unit", "value": "currencyUSD" },
+            { "id": "color", "value": { "mode": "fixed", "fixedColor": "#A352CC" } }
           ]}
-        }
+        ]
       },
-      "targets": [{ "expr": "trading_daily_pnl_usd", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "area" }
-    },
-    {
-      "id": 25,
-      "title": "Total Fees Paid",
-      "type": "stat",
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 8, "y": 11, "w": 8, "h": 4 },
-      "description": "Lifetime maker+taker fees deducted from net P&L.",
-      "fieldConfig": {
-        "defaults": { "unit": "currencyUSD", "color": { "mode": "fixed", "fixedColor": "purple" } }
-      },
-      "targets": [{ "expr": "trading_total_fees_usd", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none" }
-    },
-    {
-      "id": 26,
-      "title": "Closed Trades",
-      "type": "stat",
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 16, "y": 11, "w": 8, "h": 4 },
-      "fieldConfig": {
-        "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }
-      },
-      "targets": [{ "expr": "trading_closed_trades_total", "refId": "A" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "value", "graphMode": "none" }
-    },
-
-    {
-      "type": "row",
-      "id": 102,
-      "title": "Equity Curve",
-      "collapsed": false,
-      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 },
-      "panels": []
-    },
-    {
-      "id": 30,
-      "title": "Equity (USD)",
-      "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 9 },
-      "description": "Live portfolio equity. Y-axis clamped to $3.5K–$6.5K so real dips stand out.",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "color": { "mode": "fixed", "fixedColor": "#73BF69" },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "spanNulls": true,
-            "showPoints": "never",
-            "gradientMode": "opacity"
-          },
-          "min": 3500,
-          "max": 6500
-        }
-      },
-      "targets": [{ "expr": "trading_equity_usd", "legendFormat": "Equity", "refId": "A" }],
+      "targets": [
+        { "expr": "trading_closed_trades_total", "legendFormat": "Closed Trades", "refId": "A" },
+        { "expr": "trading_total_fees_usd", "legendFormat": "Total Fees", "refId": "B" }
+      ],
       "options": {
-        "tooltip": { "mode": "single" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical"
       }
     },
 
     {
-      "type": "row",
-      "id": 103,
-      "title": "Activity & Diagnostics",
-      "collapsed": false,
-      "gridPos": { "x": 0, "y": 25, "w": 24, "h": 1 },
-      "panels": []
+      "id": 30,
+      "title": "Equity",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 9 },
+      "description": "Live equity vs starting capital (dashed reference).",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "spanNulls": true,
+            "showPoints": "never",
+            "gradientMode": "opacity"
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Starting Capital" }, "properties": [
+            { "id": "color", "value": { "mode": "fixed", "fixedColor": "#8E8E8E" } },
+            { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+            { "id": "custom.fillOpacity", "value": 0 }
+          ]},
+          { "matcher": { "id": "byName", "options": "Equity" }, "properties": [
+            { "id": "color", "value": { "mode": "fixed", "fixedColor": "#73BF69" } }
+          ]}
+        ]
+      },
+      "targets": [
+        { "expr": "trading_equity_usd", "legendFormat": "Equity", "refId": "A" },
+        { "expr": "trading_initial_capital_usd", "legendFormat": "Starting Capital", "refId": "B" }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["lastNotNull", "min", "max"] }
+      }
     },
+
     {
       "id": 40,
       "title": "Fills per minute",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 0, "y": 26, "w": 12, "h": 7 },
+      "gridPos": { "x": 0, "y": 23, "w": 12, "h": 7 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "lineWidth": 1, "fillOpacity": 40, "drawStyle": "bars", "stacking": { "mode": "normal" } }
+          "custom": { "lineWidth": 1, "fillOpacity": 60, "drawStyle": "bars", "stacking": { "mode": "normal" } }
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "buy" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
-          { "matcher": { "id": "byName", "options": "sell" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+          { "matcher": { "id": "byName", "options": "buy" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#73BF69" } }] },
+          { "matcher": { "id": "byName", "options": "sell" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#E02F44" } }] }
         ]
       },
-      "targets": [{ "expr": "rate(trading_fills_total[5m]) * 60", "legendFormat": "{{side}}", "refId": "A" }]
+      "targets": [{ "expr": "rate(trading_fills_total[5m]) * 60", "legendFormat": "{{side}}", "refId": "A" }],
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
     },
     {
       "id": 41,
       "title": "Signal Rejections by Reason",
       "type": "barchart",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "x": 12, "y": 26, "w": 12, "h": 7 },
-      "description": "Why the risk manager turned signals away. Heavy 'daily_loss_limit_breached' = bot keeps tripping its breaker.",
+      "gridPos": { "x": 12, "y": 23, "w": 12, "h": 7 },
+      "description": "Why the risk manager turned signals away.",
       "fieldConfig": {
         "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }
       },
       "targets": [{ "expr": "sort_desc(trading_rejections_total)", "legendFormat": "{{reason}}", "refId": "A" }],
-      "options": { "xTickLabelRotation": -30, "legend": { "displayMode": "list", "placement": "bottom" } }
+      "options": { "xTickLabelRotation": -20, "legend": { "displayMode": "list", "placement": "bottom" }, "stacking": "none" }
     },
 
     {
@@ -358,21 +411,21 @@
       "title": "Per-Symbol Performance",
       "type": "table",
       "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "${infinity_ds}" },
-      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 8 },
-      "description": "Per-symbol breakdown of closed-trade performance.",
+      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 8 },
+      "description": "Closed-trade breakdown by symbol.",
       "fieldConfig": {
         "defaults": { "custom": { "align": "auto" } },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "net_pnl" }, "properties": [
+          { "matcher": { "id": "byName", "options": "Net P&L" }, "properties": [
             { "id": "unit", "value": "currencyUSD" },
             { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } },
-            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }] } }
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "#E02F44", "value": null }, { "color": "#73BF69", "value": 0 }] } }
           ]},
-          { "matcher": { "id": "byName", "options": "fees" }, "properties": [{ "id": "unit", "value": "currencyUSD" }] },
-          { "matcher": { "id": "byName", "options": "win_rate_pct" }, "properties": [{ "id": "unit", "value": "percent" }] },
-          { "matcher": { "id": "byName", "options": "profit_factor" }, "properties": [
+          { "matcher": { "id": "byName", "options": "Fees" }, "properties": [{ "id": "unit", "value": "currencyUSD" }] },
+          { "matcher": { "id": "byName", "options": "Win Rate" }, "properties": [{ "id": "unit", "value": "percent" }] },
+          { "matcher": { "id": "byName", "options": "PF" }, "properties": [
             { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } },
-            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 1 }, { "color": "green", "value": 1.5 }] } }
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "#E02F44", "value": null }, { "color": "#FF9830", "value": 1 }, { "color": "#73BF69", "value": 1.5 }] } }
           ]}
         ]
       },
@@ -395,40 +448,32 @@
     },
 
     {
-      "type": "row",
-      "id": 104,
-      "title": "Trade History",
-      "collapsed": false,
-      "gridPos": { "x": 0, "y": 41, "w": 24, "h": 1 },
-      "panels": []
-    },
-    {
       "id": 60,
-      "title": "Closed Trades",
+      "title": "Trade History",
       "type": "table",
       "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "${infinity_ds}" },
-      "gridPos": { "x": 0, "y": 42, "w": 24, "h": 12 },
-      "description": "Newest first. WIN/LOSS color comes from net P&L sign.",
+      "gridPos": { "x": 0, "y": 38, "w": 24, "h": 12 },
+      "description": "Newest first. Color shows win/loss.",
       "fieldConfig": {
         "defaults": { "custom": { "align": "auto" } },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "net_pnl" }, "properties": [
+          { "matcher": { "id": "byName", "options": "Net P&L" }, "properties": [
             { "id": "unit", "value": "currencyUSD" },
             { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } },
-            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }] } }
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "#E02F44", "value": null }, { "color": "#73BF69", "value": 0 }] } }
           ]},
-          { "matcher": { "id": "byName", "options": "result" }, "properties": [
+          { "matcher": { "id": "byName", "options": "Result" }, "properties": [
             { "id": "custom.cellOptions", "value": { "type": "color-background" } },
             { "id": "mappings", "value": [
-              { "type": "value", "options": { "win": { "color": "green", "text": "WIN" } } },
-              { "type": "value", "options": { "loss": { "color": "red", "text": "LOSS" } } }
+              { "type": "value", "options": { "win": { "color": "#73BF69", "text": "WIN" } } },
+              { "type": "value", "options": { "loss": { "color": "#E02F44", "text": "LOSS" } } }
             ]}
           ]},
-          { "matcher": { "id": "byName", "options": "gross_pnl" }, "properties": [{ "id": "unit", "value": "currencyUSD" }] },
-          { "matcher": { "id": "byName", "options": "fees" }, "properties": [{ "id": "unit", "value": "currencyUSD" }] },
-          { "matcher": { "id": "byName", "options": "entry_price" }, "properties": [{ "id": "decimals", "value": 6 }] },
-          { "matcher": { "id": "byName", "options": "exit_price" }, "properties": [{ "id": "decimals", "value": 6 }] },
-          { "matcher": { "id": "byName", "options": "duration_min" }, "properties": [{ "id": "unit", "value": "m" }] }
+          { "matcher": { "id": "byName", "options": "Gross P&L" }, "properties": [{ "id": "unit", "value": "currencyUSD" }] },
+          { "matcher": { "id": "byName", "options": "Fees" }, "properties": [{ "id": "unit", "value": "currencyUSD" }] },
+          { "matcher": { "id": "byName", "options": "Entry" }, "properties": [{ "id": "decimals", "value": 6 }] },
+          { "matcher": { "id": "byName", "options": "Exit" }, "properties": [{ "id": "decimals", "value": 6 }] },
+          { "matcher": { "id": "byName", "options": "Duration" }, "properties": [{ "id": "unit", "value": "m" }] }
         ]
       },
       "targets": [{

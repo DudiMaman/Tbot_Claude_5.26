@@ -112,6 +112,9 @@ class TradingEngine:
             try:
                 self._metrics = TradingMetrics()
                 self._metrics.start_server(prometheus_port)
+                # Starting capital never changes; set once so the dashboard
+                # can compute total return $ and % relative to it.
+                self._metrics.initial_capital.set(risk_config.capital_usd)
             except Exception as e:
                 logger.warning("prometheus_start_failed", error=str(e))
 

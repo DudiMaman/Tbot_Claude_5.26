@@ -8,6 +8,7 @@ class TradingMetrics:
     def __init__(self) -> None:
         # Live state
         self.equity = Gauge("trading_equity_usd", "Current portfolio equity", ["mode"])
+        self.initial_capital = Gauge("trading_initial_capital_usd", "Starting capital configured for this run")
         self.open_positions = Gauge("trading_open_positions", "Open position count", ["asset_class"])
         self.daily_pnl = Gauge("trading_daily_pnl_usd", "Daily net P&L")
         self.heartbeat = Gauge("trading_heartbeat_timestamp", "Unix timestamp of last bar processed")
