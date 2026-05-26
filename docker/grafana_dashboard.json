@@ -57,11 +57,11 @@
           "custom": { "lineWidth": 2, "fillOpacity": 25, "gradientMode": "opacity" }
         }
       },
-      "targets": [{ "expr": "trading_equity_usd", "refId": "A" }],
+      "targets": [{ "expr": "trading_equity_usd", "legendFormat": "Equity", "refId": "A" }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "value",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "graphMode": "area",
         "justifyMode": "center"
       }
@@ -85,11 +85,11 @@
           "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "opacity" }
         }
       },
-      "targets": [{ "expr": "trading_equity_usd - trading_initial_capital_usd", "refId": "A" }],
+      "targets": [{ "expr": "trading_equity_usd - trading_initial_capital_usd", "legendFormat": "Return", "refId": "A" }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "value",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "graphMode": "area",
         "justifyMode": "center"
       }
@@ -114,11 +114,11 @@
           "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "opacity" }
         }
       },
-      "targets": [{ "expr": "(trading_equity_usd - trading_initial_capital_usd) / trading_initial_capital_usd * 100", "refId": "A" }],
+      "targets": [{ "expr": "(trading_equity_usd - trading_initial_capital_usd) / trading_initial_capital_usd * 100", "legendFormat": "Return %", "refId": "A" }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "value",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "graphMode": "area",
         "justifyMode": "center"
       }
