@@ -140,6 +140,7 @@ class TradingEngine:
             asyncio.create_task(self._stale_order_monitor()),
             asyncio.create_task(self._daily_reset_loop()),
             asyncio.create_task(self._status_reporter()),
+            asyncio.create_task(self._heartbeat_loop()),
         ]
 
         logger.info(
@@ -500,6 +501,15 @@ class TradingEngine:
 
     def stop(self) -> None:
         self._running = False
+
+    async def _heartbeat_loop(self) -> None:
+        """Pulse the heartbeat gauge every 30s so the dashboard can tell the
+        process is alive between candle closes (which can be 15m+ apart)."""
+        import time as _time
+        while self._running:
+            if self._metrics:
+                self._metrics.heartbeat.set(_time.time())
+            await asyncio.sleep(30)
 
     def _publish_kpi_metrics(self) -> None:
         """Push performance KPIs + safety state to Prometheus gauges."""
