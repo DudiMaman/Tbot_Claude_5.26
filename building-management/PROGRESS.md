@@ -24,35 +24,49 @@ This document is updated continuously as development proceeds. It is the source 
 - 🔴 CI workflows
 
 ### M1 — Auth + Core Domain
-- ✅ DB schema: tenants, buildings, apartments, people, management_users, maintenance_workers
-- ✅ DB schema: apartment_assignments + rental_contracts (the owner/renter/bill-payer model)
-- ✅ RLS policies for all tenant-scoped tables
-- 🔴 NestJS API modules (in progress next)
+- ✅ DB schema: all entities, full RLS
+- ✅ NestJS bootstrap (main, AppModule, DbModule, HealthController)
+- ✅ AuthModule: SupabaseJwtGuard, RlsContextInterceptor, RolesGuard, Public decorator
+- ✅ TenantsModule (signup, get, branding)
+- ✅ BuildingsModule (CRUD)
+- ✅ ApartmentsModule + AssignmentService (resolveBillPayer algorithm — CRITICAL)
+- ✅ PeopleModule (CRUD + QR claim flow)
+- ✅ WorkersModule (CRUD + today's schedule)
 
 ### M2 — Billing + Invoicing + Checks
-- ✅ DB schema: charge_schedules, charges, payments, payment_methods
-- ✅ DB schema: invoices (ITA-clearance-ready), invoice_series, invoice_line_items
-- ✅ DB schema: checks, check_batches, bounced_checks (with revert trigger)
-- 🔴 Service-layer implementation
+- ✅ BillingModule + BillingService (charge schedules, dry-run, cycle generation w/ bill-payer resolution)
+- ✅ BillingModule + DunningService (per-spec dunning policy)
+- ✅ PaymentsModule + Tranzila adapter (live + mock) + webhook handler
+- ✅ InvoicingModule (tax-compliant issue + credit notes, gap-free serials, ITA clearance live+mock)
+- ✅ ChecksModule (intake, deposit batches, bounce workflow with charge reversal + auto fee)
 
 ### M3 — Tickets + Tasks + Documents
-- ✅ DB schema: service_tickets, tasks, ticket_comments
-- ✅ DB schema: documents, document_versions, document_acls
-- 🔴 Service-layer implementation
+- ✅ TicketsModule (intake, AI classifier integration, status workflow, rating)
+- ✅ TasksModule (CRUD, assign, status transitions)
+- ✅ DocumentsModule (vault upload, versioning, expiring-soon scan)
 
 ### M4 — Mobile Apps + Gate Access
-- ✅ DB schema: access_gates, guest_codes, access_events
-- 🔴 Mobile apps
+- ✅ AccessModule (gate open with provider pattern, http-webhook + mock providers, guest codes)
+- 🔴 Mobile apps (next)
 
 ### M5 — WhatsApp + AI
-- ✅ DB schema: conversations, messages, bot_conversations
-- ✅ DB schema: notifications, kb_documents, kb_chunks (pgvector)
-- ✅ AI prompts + Claude tools defined
-- 🔴 Service-layer + WhatsApp webhook handler
+- ✅ WhatsAppModule (Cloud API integration, send text + template, webhook receive)
+- ✅ AiBotModule (Claude integration with tools, mock fallback, escalation)
+- ✅ NotificationsModule (multi-channel fanout: push/email/sms/whatsapp, dedupe, DND)
+- ✅ AuditModule (hash-chained audit log)
+- ✅ FilesModule (Supabase storage upload-intent + signed URLs)
+- ✅ FlyersModule (welcome flyer with QR for 4 variants)
+- ✅ VendorsModule + MASAV file generation
+- ✅ BulletinModule (posts + reactions)
+- ✅ PollsModule (with eligibility checks per role, anonymous hashing)
+- ✅ AddonsModule (catalog + purchase flow)
+- ✅ ReportsModule (collection rate, AR aging, open tickets, per-person AR)
 
 ### M6 — Polish + Marketing GA
-- 🔴 Marketing site
-- 🔴 Admin web
+- 🔴 Marketing site (next)
+- 🔴 Admin web (next)
+- 🔴 Mobile apps (next)
+- 🔴 Tests
 
 ## Human action required (👤)
 
