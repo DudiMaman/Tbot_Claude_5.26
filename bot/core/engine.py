@@ -503,13 +503,15 @@ class TradingEngine:
         self._running = False
 
     async def _heartbeat_loop(self) -> None:
-        """Pulse the heartbeat gauge every 30s so the dashboard can tell the
-        process is alive between candle closes (which can be 15m+ apart)."""
+        """Pulse the heartbeat gauge every 10s so the dashboard can tell the
+        process is alive between candle closes (which can be 15m+ apart).
+        10s leaves comfortable margin for scrape + push + Grafana delays
+        below the 30s LIVE threshold."""
         import time as _time
         while self._running:
             if self._metrics:
                 self._metrics.heartbeat.set(_time.time())
-            await asyncio.sleep(30)
+            await asyncio.sleep(10)
 
     def _publish_kpi_metrics(self) -> None:
         """Push performance KPIs + safety state to Prometheus gauges."""

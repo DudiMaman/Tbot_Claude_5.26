@@ -149,7 +149,7 @@
           ]}
         }
       },
-      "targets": [{ "expr": "time() - trading_heartbeat_timestamp", "refId": "A" }],
+      "targets": [{ "expr": "min(time() - trading_heartbeat_timestamp)", "refId": "A" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background_solid", "textMode": "value", "graphMode": "none", "justifyMode": "center" }
     },
     {
