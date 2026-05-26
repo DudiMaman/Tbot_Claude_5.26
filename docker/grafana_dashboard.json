@@ -85,7 +85,7 @@
           "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "opacity" }
         }
       },
-      "targets": [{ "expr": "trading_equity_usd - trading_initial_capital_usd", "legendFormat": "Return", "refId": "A" }],
+      "targets": [{ "expr": "sum(trading_equity_usd) - sum(trading_initial_capital_usd)", "legendFormat": "Return", "refId": "A" }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "value",
@@ -114,7 +114,7 @@
           "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "opacity" }
         }
       },
-      "targets": [{ "expr": "(trading_equity_usd - trading_initial_capital_usd) / trading_initial_capital_usd * 100", "legendFormat": "Return %", "refId": "A" }],
+      "targets": [{ "expr": "(sum(trading_equity_usd) - sum(trading_initial_capital_usd)) / sum(trading_initial_capital_usd) * 100", "legendFormat": "Return %", "refId": "A" }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "value",
