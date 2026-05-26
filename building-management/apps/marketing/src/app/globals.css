@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 255 255 255;
+  --foreground: 17 24 39;
+}
+
+html, body {
+  @apply text-slate-900;
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+}
+
+/* RTL-friendly defaults */
+body {
+  direction: rtl;
+}

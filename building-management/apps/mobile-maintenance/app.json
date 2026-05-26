@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "ניהול מבנים — אחזקה",
+    "slug": "bm-maintenance",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "bmmaintenance",
+    "ios": { "bundleIdentifier": "co.il.buildingmanagement.maintenance" },
+    "android": { "package": "co.il.buildingmanagement.maintenance" },
+    "plugins": ["expo-router"],
+    "experiments": { "tsconfigPaths": true }
+  }
+}
