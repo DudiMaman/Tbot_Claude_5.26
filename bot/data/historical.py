@@ -51,7 +51,10 @@ class HistoricalLoader:
             self._fetch_ccxt_sync, symbol, timeframe, start, end
         )
         if not df.empty:
-            self._cache.save(symbol, timeframe, start, end, df)
+            try:
+                self._cache.save(symbol, timeframe, start, end, df)
+            except Exception:
+                pass  # cache write failure shouldn't discard fetched data
         return df
 
     def _fetch_ccxt_sync(

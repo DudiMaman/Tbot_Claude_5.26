@@ -4,6 +4,7 @@ websockets>=12.0
 pandas>=2.2.0
 # pandas-ta not available on PyPI for Py3.11 — indicators implemented natively in strategies
 numpy>=1.26.0
+pyarrow>=15.0.0  # for Parquet read/write in DataCache
 pydantic>=2.6.0
 pyyaml>=6.0.1
 python-dotenv>=1.0.0
