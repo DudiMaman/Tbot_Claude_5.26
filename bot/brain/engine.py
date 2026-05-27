@@ -86,7 +86,10 @@ class BrainEngine:
 
         # Update regime estimate from price data
         if price_df is not None and len(price_df) >= 105:
+            previous = self._current_regime
             self._current_regime = self._regime_detector.detect(price_df)
+            if self._current_regime != previous:
+                self._notify_regime_change(previous, self._current_regime)
 
         # Run full assessment on schedule
         if self._bar_count % self._interval == 0:
@@ -106,6 +109,53 @@ class BrainEngine:
             "metrics": self._monitor.to_dict(),
             "decisions": self._state.to_summary(),
         }
+
+    # ------------------------------------------------------------------
+    # Regime transition notifications (Telegram + structured log)
+    # ------------------------------------------------------------------
+
+    _MOMENTUM_FAVORABLE = {
+        MarketRegime.TRENDING_UP,
+        MarketRegime.TRENDING_DOWN,
+        MarketRegime.HIGH_VOL,
+    }
+
+    def _notify_regime_change(
+        self, before: MarketRegime, after: MarketRegime
+    ) -> None:
+        logger.info(
+            "regime_change",
+            before=before.value,
+            after=after.value,
+            bar=self._bar_count,
+            favorable_for_momentum=after in self._MOMENTUM_FAVORABLE,
+        )
+
+        if after in self._MOMENTUM_FAVORABLE:
+            icon, note = "🟢", "Momentum strategies favorable"
+        elif after == MarketRegime.RANGING:
+            icon, note = "🟡", "Ranging market — momentum stays flat"
+        else:
+            icon, note = "⚪", ""
+
+        msg_lines = [
+            f"{icon} *Market regime change*",
+            f"`{before.value}` → `{after.value}`",
+        ]
+        if note:
+            msg_lines.append(f"_{note}_")
+        msg = "\n".join(msg_lines)
+
+        # Fire-and-forget Telegram alert (silently no-ops if creds unset
+        # or no running event loop)
+        try:
+            import asyncio
+            from bot.reporting.alerts import send_telegram
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(send_telegram(msg))
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Internal assessment loop
