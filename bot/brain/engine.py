@@ -50,6 +50,7 @@ class BrainEngine:
         state_path: Path = Path("reports/brain_state.json"),
         min_trades_for_assessment: int = 5,
         rolling_window: int = 20,
+        regime_stability_bars: int = 3,
     ) -> None:
         self._strategies: dict[str, BaseStrategy] = {s.strategy_id: s for s in strategies}
         self._portfolio = portfolio
@@ -64,7 +65,15 @@ class BrainEngine:
         self._state = BrainState(state_path)
 
         self._enabled: dict[str, bool] = {sid: True for sid in self._strategies}
+        # `_current_regime` is the CONFIRMED regime (after hysteresis). The raw
+        # classifier output is noisy and can flip every 1-2 bars — using the raw
+        # value would spam logs/alerts and cause the brain to flip-flop on every
+        # tick. We only update _current_regime when the same new regime has
+        # been observed for `_stability_threshold` consecutive bars.
         self._current_regime: MarketRegime = MarketRegime.UNKNOWN
+        self._stability_threshold = regime_stability_bars
+        self._pending_regime: Optional[MarketRegime] = None
+        self._pending_count: int = 0
         self._bar_count: int = 0
 
         # Snapshot initial config values — Brain may only widen trailing stops,
@@ -84,16 +93,36 @@ class BrainEngine:
         # Ingest any newly closed trades from the shared tracker
         self._monitor.ingest_new_trades(self._portfolio.tracker.closed_trades)
 
-        # Update regime estimate from price data
+        # Update regime estimate from price data (with hysteresis)
         if price_df is not None and len(price_df) >= 105:
-            previous = self._current_regime
-            self._current_regime = self._regime_detector.detect(price_df)
-            if self._current_regime != previous:
-                self._notify_regime_change(previous, self._current_regime)
+            raw_regime = self._regime_detector.detect(price_df)
+            self._maybe_confirm_regime(raw_regime)
 
         # Run full assessment on schedule
         if self._bar_count % self._interval == 0:
             self._assess_and_act()
+
+    def _maybe_confirm_regime(self, raw: MarketRegime) -> None:
+        """Apply hysteresis: only commit a new regime once it's been observed
+        for `_stability_threshold` consecutive bars. The raw classifier is
+        noisy and can flip every 1-2 bars; without this filter, the brain
+        would react to noise and Telegram alerts would fire constantly.
+        """
+        if raw == self._current_regime:
+            self._pending_regime = None
+            self._pending_count = 0
+            return
+        if raw == self._pending_regime:
+            self._pending_count += 1
+        else:
+            self._pending_regime = raw
+            self._pending_count = 1
+        if self._pending_count >= self._stability_threshold:
+            previous = self._current_regime
+            self._current_regime = raw
+            self._pending_regime = None
+            self._pending_count = 0
+            self._notify_regime_change(previous, self._current_regime)
 
     def is_strategy_enabled(self, strategy_id: str) -> bool:
         """Called by the engine before dispatching a bar to a strategy."""
