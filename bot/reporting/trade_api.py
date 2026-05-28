@@ -57,12 +57,39 @@ def _build_app(portfolio: "PortfolioManager", risk_mgr: "RiskManager") -> web.Ap
                 "duration_min": round(t.duration_seconds / 60, 1),
                 "result": "win" if t.net_pnl > 0 else "loss",
             })
-        # newest first
         rows.sort(key=lambda r: r["time"], reverse=True)
+        return web.json_response(rows)
+
+    async def symbol_stats(request: web.Request) -> web.Response:
+        from collections import defaultdict
+        stats: dict = defaultdict(lambda: {"trades": 0, "wins": 0, "gross_pnl": 0.0, "fees": 0.0})
+        for t in portfolio.tracker.closed_trades:
+            s = stats[t.symbol]
+            s["trades"] += 1
+            if t.net_pnl > 0:
+                s["wins"] += 1
+            s["gross_pnl"] += t.gross_pnl
+            s["fees"] += t.fees_paid
+        rows = []
+        for symbol, s in stats.items():
+            net_pnl = s["gross_pnl"] - s["fees"]
+            losses = sum(t.net_pnl for t in portfolio.tracker.closed_trades if t.symbol == symbol and t.net_pnl <= 0)
+            wins_sum = sum(t.net_pnl for t in portfolio.tracker.closed_trades if t.symbol == symbol and t.net_pnl > 0)
+            profit_factor = round(wins_sum / abs(losses), 2) if losses < 0 else 0.0
+            rows.append({
+                "symbol": symbol,
+                "trades": s["trades"],
+                "win_rate_pct": round(s["wins"] / s["trades"] * 100, 1) if s["trades"] else 0.0,
+                "profit_factor": profit_factor,
+                "net_pnl": round(net_pnl, 4),
+                "fees": round(s["fees"], 4),
+            })
+        rows.sort(key=lambda r: r["net_pnl"], reverse=True)
         return web.json_response(rows)
 
     app.router.add_get("/status", status)
     app.router.add_get("/trades", trades)
+    app.router.add_get("/symbol_stats", symbol_stats)
     return app
 
 
